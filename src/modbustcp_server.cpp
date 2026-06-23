@@ -1,6 +1,8 @@
 #include "../include/robot_ctrol_node/modbustcp_server.hpp"
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <ament_index_cpp/get_package_prefix.hpp>
+#include "../include/robot_ctrol_node/modbustcp_server.hpp"
+
 
 using namespace std::chrono_literals;
 using namespace std;
@@ -64,9 +66,27 @@ namespace robot_ctrol_node
   {
     is_stop_ = true ;
     is_run_ = false ;
-  } 
+  }
 
-   // 单个客户端处理
+  /// @brief 对只读寄存器进行数据更新
+  /// @param index_start 
+  /// @param src 
+  void ModbusTcpServerCpp::update_Input_reg(uint8_t index_start ,uint16_t* src, uint8_t len)
+  {
+    std::lock_guard<std::mutex> lock(g_reg_mutex);
+    memcpy(g_modbus_map->tab_registers+index_start,src,len);
+  }
+
+  /// @brief 获取寄存器数据
+  /// @param index_start 
+  /// @param src 
+  void ModbusTcpServerCpp::getdown_Input_reg(uint8_t index_start , uint16_t* des, uint8_t len)
+  {
+      std::lock_guard<std::mutex> lock(g_reg_mutex);
+      memcpy(des,g_modbus_map->tab_registers+index_start,len);
+  }
+
+  // 单个客户端处理
   void ModbusTcpServerCpp::handle_single_client(modbus_t* ctx, int client_fd)
   {
     uint8_t recv_buffer[MODBUS_TCP_MAX_ADU_LENGTH];

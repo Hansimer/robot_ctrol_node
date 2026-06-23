@@ -126,28 +126,25 @@ namespace robot_ctrol_node
                         actions_init.actions.at(idx).index = it2.at(idx).index;
                         actions_init.actions.at(idx).sub_index =  it2.at(idx).sub_index;
                         actions_init.actions.at(idx).type = it2.at(idx).type;
-                        actions_init.actions.at(idx).info_.action_data.d1 = it2.at(idx).d1;
-                        actions_init.actions.at(idx).info_.action_data.d2 = it2.at(idx).d2;
-                        actions_init.actions.at(idx).info_.action_data.d3 = it2.at(idx).d3;
-                        actions_init.actions.at(idx).info_.action_data.d4 = it2.at(idx).d4;
-                        actions_init.actions.at(idx).info_.action_data.d5 = it2.at(idx).d5;
-                        actions_init.actions.at(idx).info_.action_data.d6 = it2.at(idx).d6;
-                        actions_init.actions.at(idx).info_.action_data.d7 = it2.at(idx).d7;
-                        actions_init.actions.at(idx).info_.action_data.d8 = it2.at(idx).d8;
-                        actions_init.actions.at(idx).info_.action_data.d9 = it2.at(idx).d9;
-                        actions_init.actions.at(idx).info_.action_data.d10 = it2.at(idx).d10;
-                        actions_init.actions.at(idx).info_.action_data.d11 = it2.at(idx).d11;
-                        actions_init.actions.at(idx).info_.action_data.d12 = it2.at(idx).d12;
-                        actions_init.actions.at(idx).info_.action_data.d13 = it2.at(idx).d13;
-                        actions_init.actions.at(idx).info_.action_data.d14 = it2.at(idx).d14;
+                        actions_init.actions.at(idx).info_.action_data.d[0] = it2.at(idx).d1;
+                        actions_init.actions.at(idx).info_.action_data.d[1] = it2.at(idx).d2;
+                        actions_init.actions.at(idx).info_.action_data.d[2] = it2.at(idx).d3;
+                        actions_init.actions.at(idx).info_.action_data.d[3] = it2.at(idx).d4;
+                        actions_init.actions.at(idx).info_.action_data.d[4] = it2.at(idx).d5;
+                        actions_init.actions.at(idx).info_.action_data.d[5] = it2.at(idx).d6;
+                        actions_init.actions.at(idx).info_.action_data.d[6] = it2.at(idx).d7;
+                        actions_init.actions.at(idx).info_.action_data.d[7] = it2.at(idx).d8;
+                        actions_init.actions.at(idx).info_.action_data.d[8] = it2.at(idx).d9;
+                        actions_init.actions.at(idx).info_.action_data.d[9] = it2.at(idx).d10;
+                        actions_init.actions.at(idx).info_.action_data.d[10] = it2.at(idx).d11;
+                        actions_init.actions.at(idx).info_.action_data.d[11] = it2.at(idx).d12;
+                        actions_init.actions.at(idx).info_.action_data.d[12] = it2.at(idx).d13;
+                        actions_init.actions.at(idx).info_.action_data.d[13] = it2.at(idx).d14;
 
                         
                         LOG_INFO("  [%zu] index: %u, sub_index: %u, type: %u",
                                 idx, actions_init.actions.at(idx).index, actions_init.actions.at(idx).sub_index, actions_init.actions.at(idx).type);
-                        auto entry = actions_init.actions.at(idx).info_.action_data;
-                            LOG_INFO("  d1~d14: %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f",
-                                entry.d1,  entry.d2,  entry.d3,  entry.d4,  entry.d5,  entry.d6,  entry.d7,  entry.d8,
-                                entry.d9, entry.d10, entry.d11, entry.d12, entry.d13, entry.d14);
+                     
                         }
                     }
 
@@ -164,28 +161,25 @@ namespace robot_ctrol_node
                         actions_init.actions.at(idx).index = it2.at(idx).index;
                         actions_init.actions.at(idx).sub_index =  it2.at(idx).sub_index;
                         actions_init.actions.at(idx).type = it2.at(idx).type;
-                        actions_init.actions.at(idx).info_.action_data.d1 = it2.at(idx).d1;
-                        actions_init.actions.at(idx).info_.action_data.d2 = it2.at(idx).d2;
-                        actions_init.actions.at(idx).info_.action_data.d3 = it2.at(idx).d3;
-                        actions_init.actions.at(idx).info_.action_data.d4 = it2.at(idx).d4;
-                        actions_init.actions.at(idx).info_.action_data.d5 = it2.at(idx).d5;
-                        actions_init.actions.at(idx).info_.action_data.d6 = it2.at(idx).d6;
-                        actions_init.actions.at(idx).info_.action_data.d7 = it2.at(idx).d7;
-                        actions_init.actions.at(idx).info_.action_data.d8 = it2.at(idx).d8;
-                        actions_init.actions.at(idx).info_.action_data.d9 = it2.at(idx).d9;
-                        actions_init.actions.at(idx).info_.action_data.d10 = it2.at(idx).d10;
-                        actions_init.actions.at(idx).info_.action_data.d11 = it2.at(idx).d11;
-                        actions_init.actions.at(idx).info_.action_data.d12 = it2.at(idx).d12;
-                        actions_init.actions.at(idx).info_.action_data.d13 = it2.at(idx).d13;
-                        actions_init.actions.at(idx).info_.action_data.d14 = it2.at(idx).d14;
+                        actions_init.actions.at(idx).info_.action_data.d[0] = it2.at(idx).d1;
+                        actions_init.actions.at(idx).info_.action_data.d[1] = it2.at(idx).d2;
+                        actions_init.actions.at(idx).info_.action_data.d[2] = it2.at(idx).d3;
+                        actions_init.actions.at(idx).info_.action_data.d[3] = it2.at(idx).d4;
+                        actions_init.actions.at(idx).info_.action_data.d[4] = it2.at(idx).d5;
+                        actions_init.actions.at(idx).info_.action_data.d[5] = it2.at(idx).d6;
+                        actions_init.actions.at(idx).info_.action_data.d[6] = it2.at(idx).d7;
+                        actions_init.actions.at(idx).info_.action_data.d[7] = it2.at(idx).d8;
+                        actions_init.actions.at(idx).info_.action_data.d[8] = it2.at(idx).d9;
+                        actions_init.actions.at(idx).info_.action_data.d[9] = it2.at(idx).d10;
+                        actions_init.actions.at(idx).info_.action_data.d[10] = it2.at(idx).d11;
+                        actions_init.actions.at(idx).info_.action_data.d[11] = it2.at(idx).d12;
+                        actions_init.actions.at(idx).info_.action_data.d[12] = it2.at(idx).d13;
+                        actions_init.actions.at(idx).info_.action_data.d[13] = it2.at(idx).d14;
 
                         
                         LOG_INFO("  [%zu] index: %u, sub_index: %u, type: %u",
                                 idx, actions_init.actions.at(idx).index, actions_init.actions.at(idx).sub_index, actions_init.actions.at(idx).type);
-                        auto entry = actions_init.actions.at(idx).info_.action_data;
-                            LOG_INFO("  d1~d14: %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f",
-                                entry.d1,  entry.d2,  entry.d3,  entry.d4,  entry.d5,  entry.d6,  entry.d7,  entry.d8,
-                                entry.d9, entry.d10, entry.d11, entry.d12, entry.d13, entry.d14);
+                       
                         }
                     }
                     

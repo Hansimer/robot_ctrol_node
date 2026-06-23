@@ -22,6 +22,7 @@
 #include "../include/datedef.hpp"
 #include "../getparxml.hpp"
 #include "modbustcp_server.hpp"
+#include "transform.hpp"
 
 using namespace std;
 namespace robot_ctrol_node
@@ -219,7 +220,13 @@ public:
   void run();
 
 private:
+  /// @brief 10ms 周期定时器回调任务
+  void taskpool();
+  void updata_pos_mutex(); //互斥获取位置信息
+
   bool bis_stop;
+
+  rclcpp::TimerBase::SharedPtr timer_taskpool_;  ///< 10ms 周期定时器
 
 
   TopicJoint_arm     topic_arm_module_;
@@ -232,6 +239,14 @@ private:
   std::shared_ptr<ModbusTcpServerCpp> pobj_mdtcpserver;
 
   getparxml param_robot; //获取设备参数
+  std::shared_ptr<mdreg_data> pobj_mdpar;
+
+//定义互斥变量
+  std::mutex mutex_arm_data,mutex_liftservo_data,mutex_handlservo_data,
+  mutex_handrservo_data,mutex_rotatorservo_data,mutex_headservo_data;
+  
+  
+
 };
 
 }  // namespace robot_ctrol_node

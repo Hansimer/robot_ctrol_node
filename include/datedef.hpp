@@ -9,28 +9,22 @@
 #define REGINDEX_SET_MODE_1 0x0001 //机械臂模式
 #define REGINDEX_SWITCH_MODE_2 0x0002 //切换模式 从00 切换到FF
 
+#define REGINDEX_INPUTREG_START 0 //显示寄存器开始索引0
+#define REGINDEX_HOLDREG_START 200
+#define REGLEN_MAX_INPUT 200
+#define REGLEN_MAX_HOLD 200
+
+
 
 
 using namespace std;
 
 namespace robot_ctrol_node
 {
-    // ===================== 位姿结构体定义 =====================
-        struct PoseData
-        {
-        int ID;
-        int type;
-        float d1;
-        float d2;
-        float d3;
-        float d4;
-        float d5;
-        float d6;
-        float d7;
-        float d8;
-        };
 
-        
+    /////寄存器 显示数据结构
+       
+ /////////////////////////////////机器人状态       
         struct joint_state_
         {
             string name;
@@ -69,20 +63,7 @@ namespace robot_ctrol_node
         //原始数据
         struct action_data_
         {
-            float d1;
-            float d2;
-            float d3;
-            float d4;
-            float d5;
-            float d6;
-            float d7;
-            float d8;
-            float d9;
-            float d10;
-            float d11;
-            float d12;
-            float d13;
-            float d14;
+            float d[14];            
         };
 
         //运动类型单臂节点运动
@@ -134,7 +115,7 @@ namespace robot_ctrol_node
         //运动类型等待时间
         struct wait_delay_
         {
-            float delay_s;
+            uint16_t delay_ms;
         };
 
         //运动类型单臂点对点运动

@@ -3,6 +3,8 @@
 #include "../include/datedef.hpp"
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <ament_index_cpp/get_package_prefix.hpp>
+#include "../include/robot_ctrol_node/transform.hpp"
+
 
 namespace robot_ctrol_node
 {
@@ -549,6 +551,8 @@ bool RobotCtrol::init()
     //创建tcpsever
     pobj_mdtcpserver = std::make_shared<ModbusTcpServerCpp>(param_robot.para_net_tcp.ip, 
     param_robot.para_net_tcp.port,param_robot.para_net_tcp.connmax,param_robot.para_net_tcp.intertime);
+    //创建tcp 参数对象
+    pobj_mdpar =  std::make_shared<mdreg_data>();
 
     //tcp 初始化
     pobj_mdtcpserver->init();
@@ -573,6 +577,8 @@ bool RobotCtrol::init()
     // 7. 初始化 ExecuteCommand 服务客户端模块
     service_execdmd_arms_.init(this);
 
+    
+
     LOG_INFO("RobotCtrol 节点已启动，等待事件...");
 
 
@@ -581,13 +587,72 @@ bool RobotCtrol::init()
 
     return true;
 }
+void RobotCtrol::taskpool()
+{
+  // 10ms 周期任务：在此添加周期性业务逻辑
+  //获取参数
+  pobj_mdtcpserver->getdown_Input_reg(0,pobj_mdpar->hold_reg.data,REGINDEX_HOLDREG_START);
+  pobj_mdpar->xch_word2bool_holdreg1();//获取按键信息
+  //cycle
+
+
+
+
+
+
+  //上行参数
+  pobj_mdpar->hold_reg_last_save();//保持last状态
+  updata_pos_mutex();
+  pobj_mdtcpserver->update_Input_reg(0,pobj_mdpar->show_reg.data,REGINDEX_HOLDREG_START);
+
+}
+
+void RobotCtrol::updata_pos_mutex()
+{
+  //获取手臂位置
+  std::unique_lock<std::mutex> lock(mutex_arm_data, std::defer_lock);
+  if(lock.try_lock()) //获取到进行数据更新
+  {
+        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armL.x,pobj_mdpar->show_reg.Reg.pos_arml_x_f2w_1, pobj_mdpar->show_reg.Reg.pos_arml_x_f2w_2 );
+        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armL.y,pobj_mdpar->show_reg.Reg.pos_arml_y_f2w_1, pobj_mdpar->show_reg.Reg.pos_arml_y_f2w_2 );
+        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armL.z,pobj_mdpar->show_reg.Reg.pos_arml_z_f2w_1, pobj_mdpar->show_reg.Reg.pos_arml_z_f2w_2 );
+        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armL.rx,pobj_mdpar->show_reg.Reg.pos_arml_rx_f2w_1, pobj_mdpar->show_reg.Reg.pos_arml_rx_f2w_2 );
+        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armL.ry,pobj_mdpar->show_reg.Reg.pos_arml_ry_f2w_1, pobj_mdpar->show_reg.Reg.pos_arml_ry_f2w_2 );
+        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armL.rz,pobj_mdpar->show_reg.Reg.pos_arml_rz_f2w_1, pobj_mdpar->show_reg.Reg.pos_arml_rz_f2w_2 );
+
+        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armR.x,pobj_mdpar->show_reg.Reg.pos_armr_x_f2w_1, pobj_mdpar->show_reg.Reg.pos_armr_x_f2w_2 );
+        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armR.y,pobj_mdpar->show_reg.Reg.pos_armr_y_f2w_1, pobj_mdpar->show_reg.Reg.pos_armr_y_f2w_2 );
+        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armR.z,pobj_mdpar->show_reg.Reg.pos_armr_z_f2w_1, pobj_mdpar->show_reg.Reg.pos_armr_z_f2w_2 );
+        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armR.rx,pobj_mdpar->show_reg.Reg.pos_armr_rx_f2w_1, pobj_mdpar->show_reg.Reg.pos_armr_rx_f2w_2 );
+        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armR.ry,pobj_mdpar->show_reg.Reg.pos_armr_ry_f2w_1, pobj_mdpar->show_reg.Reg.pos_armr_ry_f2w_2 );
+        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armR.rz,pobj_mdpar->show_reg.Reg.pos_armr_rz_f2w_1, pobj_mdpar->show_reg.Reg.pos_armr_rz_f2w_2 );
+
+    lock.unlock();//解锁
+  }
+
+  //获取手臂位置
+  std::unique_lock<std::mutex> lock1(mutex_liftservo_data, std::defer_lock);
+  if(lock1.try_lock()) //获取到进行数据更新
+  {
+    pobj_mdpar->write_float_to_word(pobj_mdpar->out_lift,pobj_mdpar->show_reg.Reg.pos_servo_lift_f2w_1,pobj_mdpar->show_reg.Reg.pos_servo_lift_f2w_2);
+    lock1.unlock();//解锁
+  }
+
+
+
+}
 void RobotCtrol::run()
 {
   LOG_INFO("===== tcp server run =====");
   pobj_mdtcpserver->start();
   pobj_mdtcpserver->g_modbus_map->tab_registers[1] =10;
 
-  LOG_INFO("===== RobotCtrol run =====");
+  // 8. 创建 10ms 周期定时器 (taskpool)
+    timer_taskpool_ = this->create_wall_timer(
+      std::chrono::milliseconds(10),
+      std::bind(&RobotCtrol::taskpool, this));
+    LOG_INFO("已创建 10ms 周期定时器 (taskpool)");
+  // LOG_INFO("===== RobotCtrol run =====");
 
   // 根据命令字符串:
   // group=r_arm type=joints joints=right_arm_7_joint:0.1,right_arm_6_joint:0.1,right_arm_5_joint:0.1
@@ -595,40 +660,40 @@ void RobotCtrol::run()
   // wait_for_result=true, timeout=0
 
   // --- 基本参数 ---
-  service_execdmd_arms_.cmd_config_.group = "r_arm";
-  service_execdmd_arms_.cmd_config_.goal_type = "joints";
-  service_execdmd_arms_.cmd_config_.execute_motion = true;       // exec=1
-  service_execdmd_arms_.cmd_config_.wait_for_result = true;
-  service_execdmd_arms_.cmd_config_.timeout = 0.0;
+  // service_execdmd_arms_.cmd_config_.group = "r_arm";
+  // service_execdmd_arms_.cmd_config_.goal_type = "joints";
+  // service_execdmd_arms_.cmd_config_.execute_motion = true;       // exec=1
+  // service_execdmd_arms_.cmd_config_.wait_for_result = true;
+  // service_execdmd_arms_.cmd_config_.timeout = 0.0;
 
-  // --- 规划器参数 ---
-  service_execdmd_arms_.cmd_config_.pipeline_id = "ompl";
-  service_execdmd_arms_.cmd_config_.planner_id = "RRTConnectkConfigDefault";
+  // // --- 规划器参数 ---
+  // service_execdmd_arms_.cmd_config_.pipeline_id = "ompl";
+  // service_execdmd_arms_.cmd_config_.planner_id = "RRTConnectkConfigDefault";
 
-  // --- joints 参数: right_arm_7_joint:0.1, right_arm_6_joint:0.1, right_arm_5_joint:0.1 ---
-  service_execdmd_arms_.cmd_config_.joints.clear();
-  {
-    joint_name_value_ j1;
-    j1.joint_name = "right_arm_1_joint";
-    j1.value = 0.5;
-    service_execdmd_arms_.cmd_config_.joints.push_back(j1);
-  }
-  {
-    joint_name_value_ j2;
-    j2.joint_name = "right_arm_2_joint";
-    j2.value = 0.5;
-    service_execdmd_arms_.cmd_config_.joints.push_back(j2);
-  }
-  {
-    joint_name_value_ j3;
-    j3.joint_name = "right_arm_5_joint";
-    j3.value = 0.1;
-    service_execdmd_arms_.cmd_config_.joints.push_back(j3);
-  }
+  // // --- joints 参数: right_arm_7_joint:0.1, right_arm_6_joint:0.1, right_arm_5_joint:0.1 ---
+  // service_execdmd_arms_.cmd_config_.joints.clear();
+  // {
+  //   joint_name_value_ j1;
+  //   j1.joint_name = "right_arm_1_joint";
+  //   j1.value = 0.5;
+  //   service_execdmd_arms_.cmd_config_.joints.push_back(j1);
+  // }
+  // {
+  //   joint_name_value_ j2;
+  //   j2.joint_name = "right_arm_2_joint";
+  //   j2.value = 0.5;
+  //   service_execdmd_arms_.cmd_config_.joints.push_back(j2);
+  // }
+  // {
+  //   joint_name_value_ j3;
+  //   j3.joint_name = "right_arm_5_joint";
+  //   j3.value = 0.1;
+  //   service_execdmd_arms_.cmd_config_.joints.push_back(j3);
+  // }
 
   
 
-  service_execdmd_arms_.send_command_from_config();
+  // service_execdmd_arms_.send_command_from_config();
 
 }
 } // namespace robot_ctrol_node

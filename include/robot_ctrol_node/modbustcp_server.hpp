@@ -42,6 +42,9 @@ class ModbusTcpServerCpp
         void start();//运行
         void stop();//停止
         modbus_mapping_t* g_modbus_map = nullptr;
+        void update_Input_reg(uint8_t index_start ,uint16_t* src, uint8_t len); //更新寄存器数据
+        void getdown_Input_reg(uint8_t index_start , uint16_t* des, uint8_t len); //获取寄存器数据
+
 
 
 
