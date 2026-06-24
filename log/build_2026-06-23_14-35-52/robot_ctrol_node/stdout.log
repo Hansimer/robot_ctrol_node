@@ -1,0 +1,86 @@
+-- The C compiler identification is GNU 11.4.0
+-- The CXX compiler identification is GNU 11.4.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found ament_cmake: 1.3.14 (/opt/ros/humble/share/ament_cmake/cmake)
+-- Found Python3: /usr/bin/python3 (found version "3.10.12") found components: Interpreter 
+-- Found rclcpp: 16.0.19 (/opt/ros/humble/share/rclcpp/cmake)
+-- Found rosidl_generator_c: 3.1.8 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+-- Found rosidl_adapter: 3.1.8 (/opt/ros/humble/share/rosidl_adapter/cmake)
+-- Found rosidl_generator_cpp: 3.1.8 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+-- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+-- Found rmw_fastrtps_cpp: 6.2.10 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)
+-- Found OpenSSL: /usr/lib/aarch64-linux-gnu/libcrypto.so (found version "3.0.2")  
+-- Found FastRTPS: /opt/ros/humble/include  
+-- Using RMW implementation 'rmw_fastrtps_cpp' as default
+-- Looking for pthread.h
+-- Looking for pthread.h - found
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE  
+-- Found rclcpp_action: 16.0.19 (/opt/ros/humble/share/rclcpp_action/cmake)
+-- Found sensor_msgs: 4.9.1 (/opt/ros/humble/share/sensor_msgs/cmake)
+-- Found my_interfaces: 0.0.0 (/home/nvidia/workplace/install/my_interfaces/share/my_interfaces/cmake)
+-- Found robot_controller: 0.0.0 (/home/nvidia/raybot_connection_ws/install/robot_controller/share/robot_controller/cmake)
+-- Found ethercat_control: 0.0.0 (/home/nvidia/raybot_connection_ws/install/ethercat_control/share/ethercat_control/cmake)
+-- Found ament_lint_auto: 0.12.15 (/opt/ros/humble/share/ament_lint_auto/cmake)
+-- Added test 'cppcheck' to perform static code analysis on C / C++ code
+-- Configured cppcheck include dirs: /home/nvidia/workplace/src/robot_ctrol_node/include
+-- Configured cppcheck exclude dirs and/or files: 
+-- Added test 'flake8' to check Python code syntax and style conventions
+-- Added test 'lint_cmake' to check CMake code style
+-- Added test 'pep257' to check Python code against some of the docstring style conventions in PEP 257
+-- Added test 'uncrustify' to check C / C++ code style
+-- Configured uncrustify additional arguments: 
+-- Added test 'xmllint' to check XML markup files
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/nvidia/workplace/src/robot_ctrol_node/build/robot_ctrol_node
+[ 66%] [32mBuilding CXX object CMakeFiles/robot_ctrol_node.dir/src/modbustcp_server.cpp.o[0m
+[ 66%] [32mBuilding CXX object CMakeFiles/robot_ctrol_node.dir/src/robot_ctrol_node.cpp.o[0m
+[100%] [32m[1mLinking CXX executable robot_ctrol_node[0m
+[100%] Built target robot_ctrol_node
+-- Install configuration: "Debug"
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/lib/robot_ctrol_node/robot_ctrol_node
+-- Set runtime path of "/home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/lib/robot_ctrol_node/robot_ctrol_node" to ""
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/launch
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/launch/dev_par.xml
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/launch/robot_ctrol_node.launch.py
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log/latest_build
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log/build_2026-06-23_14-35-52
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log/build_2026-06-23_14-35-52/events.log
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log/build_2026-06-23_14-35-52/logger_all.log
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log/build_2026-06-23_14-35-52/robot_ctrol_node
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log/build_2026-06-23_14-35-52/robot_ctrol_node/streams.log
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log/build_2026-06-23_14-35-52/robot_ctrol_node/stdout_stderr.log
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log/build_2026-06-23_14-35-52/robot_ctrol_node/stdout.log
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log/build_2026-06-23_14-35-52/robot_ctrol_node/command.log
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log/build_2026-06-23_14-35-52/robot_ctrol_node/stderr.log
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log/COLCON_IGNORE
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log/latest
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/ament_index/resource_index/package_run_dependencies/robot_ctrol_node
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/ament_index/resource_index/parent_prefix_path/robot_ctrol_node
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/environment/ament_prefix_path.sh
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/environment/ament_prefix_path.dsv
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/environment/path.sh
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/environment/path.dsv
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/local_setup.bash
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/local_setup.sh
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/local_setup.zsh
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/local_setup.dsv
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/package.dsv
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/ament_index/resource_index/packages/robot_ctrol_node
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/cmake/robot_ctrol_nodeConfig.cmake
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/cmake/robot_ctrol_nodeConfig-version.cmake
+-- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/package.xml

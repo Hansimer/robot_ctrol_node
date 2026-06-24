@@ -1,0 +1,68 @@
+[0.032s] Invoking command in '/home/nvidia/workplace/src/robot_ctrol_node/build/robot_ctrol_node': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/nvidia/workplace/install/modbus_server_package:/home/nvidia/raybot_connection_ws/install/raybot_connection_test:/home/nvidia/ws_moveit/install/moveit_configs_utils:/home/nvidia/ws_moveit/install/launch_param_builder:/opt/ros/humble /usr/bin/cmake /home/nvidia/workplace/src/robot_ctrol_node -DCMAKE_INSTALL_PREFIX=/home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node
+[0.210s] -- The C compiler identification is GNU 11.4.0
+[0.321s] -- The CXX compiler identification is GNU 11.4.0
+[0.338s] -- Detecting C compiler ABI info
+[0.511s] -- Detecting C compiler ABI info - done
+[0.524s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.525s] -- Detecting C compile features
+[0.525s] -- Detecting C compile features - done
+[0.531s] -- Detecting CXX compiler ABI info
+[0.716s] -- Detecting CXX compiler ABI info - done
+[0.742s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.743s] -- Detecting CXX compile features
+[0.744s] -- Detecting CXX compile features - done
+[0.788s] -- Found ament_cmake: 1.3.14 (/opt/ros/humble/share/ament_cmake/cmake)
+[1.221s] -- Found Python3: /usr/bin/python3 (found version "3.10.12") found components: Interpreter 
+[1.682s] -- Found rclcpp: 16.0.19 (/opt/ros/humble/share/rclcpp/cmake)
+[1.898s] -- Found rosidl_generator_c: 3.1.8 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+[1.931s] -- Found rosidl_adapter: 3.1.8 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[1.972s] -- Found rosidl_generator_cpp: 3.1.8 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+[2.025s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[2.096s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[2.308s] -- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+[2.332s] -- Found rmw_fastrtps_cpp: 6.2.10 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)
+[2.655s] -- Found OpenSSL: /usr/lib/aarch64-linux-gnu/libcrypto.so (found version "3.0.2")  
+[2.744s] -- Found FastRTPS: /opt/ros/humble/include  
+[2.854s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[2.908s] -- Looking for pthread.h
+[3.090s] -- Looking for pthread.h - found
+[3.091s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+[3.287s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+[3.291s] -- Found Threads: TRUE  
+[3.513s] -- Found rclcpp_action: 16.0.19 (/opt/ros/humble/share/rclcpp_action/cmake)
+[3.623s] -- Found sensor_msgs: 4.9.1 (/opt/ros/humble/share/sensor_msgs/cmake)
+[3.687s] -- Found my_interfaces: 0.0.0 (/home/nvidia/workplace/install/my_interfaces/share/my_interfaces/cmake)
+[3.708s] -- Found robot_controller: 0.0.0 (/home/nvidia/raybot_connection_ws/install/robot_controller/share/robot_controller/cmake)
+[3.983s] -- Found ethercat_control: 0.0.0 (/home/nvidia/raybot_connection_ws/install/ethercat_control/share/ethercat_control/cmake)
+[4.051s] -- Found ament_lint_auto: 0.12.15 (/opt/ros/humble/share/ament_lint_auto/cmake)
+[4.324s] -- Added test 'cppcheck' to perform static code analysis on C / C++ code
+[4.324s] -- Configured cppcheck include dirs: /home/nvidia/workplace/src/robot_ctrol_node/include
+[4.325s] -- Configured cppcheck exclude dirs and/or files: 
+[4.330s] -- Added test 'flake8' to check Python code syntax and style conventions
+[4.338s] -- Added test 'lint_cmake' to check CMake code style
+[4.344s] -- Added test 'pep257' to check Python code against some of the docstring style conventions in PEP 257
+[4.361s] -- Added test 'uncrustify' to check C / C++ code style
+[4.361s] -- Configured uncrustify additional arguments: 
+[4.367s] -- Added test 'xmllint' to check XML markup files
+[4.375s] -- Configuring done
+[4.405s] -- Generating done
+[4.415s] -- Build files have been written to: /home/nvidia/workplace/src/robot_ctrol_node/build/robot_ctrol_node
+[4.443s] Invoked command in '/home/nvidia/workplace/src/robot_ctrol_node/build/robot_ctrol_node' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/nvidia/workplace/install/modbus_server_package:/home/nvidia/raybot_connection_ws/install/raybot_connection_test:/home/nvidia/ws_moveit/install/moveit_configs_utils:/home/nvidia/ws_moveit/install/launch_param_builder:/opt/ros/humble /usr/bin/cmake /home/nvidia/workplace/src/robot_ctrol_node -DCMAKE_INSTALL_PREFIX=/home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node
+[4.449s] Invoking command in '/home/nvidia/workplace/src/robot_ctrol_node/build/robot_ctrol_node': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/nvidia/workplace/install/modbus_server_package:/home/nvidia/raybot_connection_ws/install/raybot_connection_test:/home/nvidia/ws_moveit/install/moveit_configs_utils:/home/nvidia/ws_moveit/install/launch_param_builder:/opt/ros/humble /usr/bin/cmake --build /home/nvidia/workplace/src/robot_ctrol_node/build/robot_ctrol_node -- -j8 -l8
+[4.625s] [ 66%] [32mBuilding CXX object CMakeFiles/robot_ctrol_node.dir/src/modbustcp_server.cpp.o[0m
+[4.626s] [ 66%] [32mBuilding CXX object CMakeFiles/robot_ctrol_node.dir/src/robot_ctrol_node.cpp.o[0m
+[45.368s] [100%] [32m[1mLinking CXX executable robot_ctrol_node[0m
+[47.881s] [100%] Built target robot_ctrol_node
+[47.923s] Invoked command in '/home/nvidia/workplace/src/robot_ctrol_node/build/robot_ctrol_node' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/nvidia/workplace/install/modbus_server_package:/home/nvidia/raybot_connection_ws/install/raybot_connection_test:/home/nvidia/ws_moveit/install/moveit_configs_utils:/home/nvidia/ws_moveit/install/launch_param_builder:/opt/ros/humble /usr/bin/cmake --build /home/nvidia/workplace/src/robot_ctrol_node/build/robot_ctrol_node -- -j8 -l8
+[47.958s] Invoking command in '/home/nvidia/workplace/src/robot_ctrol_node/build/robot_ctrol_node': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/nvidia/workplace/install/modbus_server_package:/home/nvidia/raybot_connection_ws/install/raybot_connection_test:/home/nvidia/ws_moveit/install/moveit_configs_utils:/home/nvidia/ws_moveit/install/launch_param_builder:/opt/ros/humble /usr/bin/cmake --install /home/nvidia/workplace/src/robot_ctrol_node/build/robot_ctrol_node
+[47.987s] -- Install configuration: "Debug"
+[47.987s] -- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/lib/robot_ctrol_node/robot_ctrol_node
+[48.043s] -- Set runtime path of "/home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/lib/robot_ctrol_node/robot_ctrol_node" to ""
+[48.043s] -- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/launch
+[48.043s] -- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/launch/dev_par.xml
+[48.043s] -- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/share/robot_ctrol_node/launch/robot_ctrol_node.launch.py
+[48.043s] -- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log
+[48.044s] -- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log/latest_build
+[48.044s] -- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log/build_2026-06-23_14-35-52
+[48.044s] -- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log/build_2026-06-23_14-35-52/events.log
+[48.044s] -- Installing: /home/nvidia/workplace/src/robot_ctrol_node/install/robot_ctrol_node/log/robot_ctrol_node/log/build_2026-06-23_14-35-52/logger_all.log

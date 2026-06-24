@@ -5,14 +5,37 @@
 #include <ament_index_cpp/get_package_prefix.hpp>
 #include "../include/robot_ctrol_node/transform.hpp"
 
-
 namespace robot_ctrol_node
 {
 
+  
+#define CODEAXIS_RATIO_RPM 65536
+#define RATIO_VEL_DEC_RPM 512.0*CODEAXIS_RATIO_RPM/1875
+#define RATIO_ACC_DEC_RPS 65536.0*CODEAXIS_RATIO_RPM/4000000
+
+
+#define STAWORD_MASK 0x03FF
+#define STAWORD_REACH_MASK 0x0637
+#define STAWORD_INI 0x0250
+#define STAWORD_INI2READY_6BACK 0x0231
+#define STAWORD_READY2OPEN_7BACK 0x0233
+#define STAWORD_OPEN2RUN_FBACK 0x0237
+#define STAWORD_ERR2NO_8BACK 0x0250
+#define STAWORD_ERR2STOP 0x021F
+#define STAWORD_ERR2ERR 0x0218
+
+    #define SERVO_POWERON 1 
+    #define SERVO_POWEROFF 2
+    #define SERVO_RSET 3
+    #define SERVO_SETVEL 4
+    #define SERVO_MVPOS_ABS 5
+    #define SERVO_STOP 6
+
 // ======================== 机械臂关节话题订阅模块 ========================
-void TopicJoint_arm::init(rclcpp::Node * node)
+void TopicJoint_arm::init(rclcpp::Node * node,std::mutex* mute)
 {
   node_ = node;
+  mutex_ = mute;
 
   // 订阅 /joint_states 话题
   joint_states_sub_ = node_->create_subscription<sensor_msgs::msg::JointState>(
@@ -26,24 +49,29 @@ void TopicJoint_arm::joint_states_callback(const sensor_msgs::msg::JointState::S
 {
   size_t joint_cnt = std::min(msg->name.size(), msg->position.size());
   // LOG_INFO("收到 /joint_states 关节状态，共 %zu 个关节", joint_cnt);
-
-  for (size_t i = 0; i < joint_cnt; i++)
+   std::unique_lock<std::mutex> lock1(*mutex_, std::defer_lock);
+  if(lock1.try_lock()) //获取到进行数据更新
   {
-    const std::string & jname = msg->name[i];
-    joint_state_ js;
-    js.name = jname;
-    js.rad_pose_current = static_cast<float>(msg->position[i]);
-    js.rad_vel_current = (i < msg->velocity.size()) ? static_cast<float>(msg->velocity[i]) : 0.0f;
-    js.mode = 0;
-    js.statues = 0;
-    js.error = 0;
+    for (size_t i = 0; i < joint_cnt; i++)
+    {
+      const std::string & jname = msg->name[i];
+      joint_state_ js;
+      js.name = jname;
+      js.rad_pose_current = static_cast<float>(msg->position[i]);
+      js.rad_vel_current = (i < msg->velocity.size()) ? static_cast<float>(msg->velocity[i]) : 0.0f;
+      js.mode = 0;
+      js.statues = 0;
+      js.error = 0;
 
-    // 保存到 InfoJoint_arm map
-    InfoJoint_arm[jname] = js;
+      // 保存到 InfoJoint_arm map
+      InfoJoint_arm[jname] = js;
 
-    // LOG_INFO("[InfoJoint_arm] %s: pose=%.6f rad, vel=%.6f rad/s",
-    //   js.name.c_str(), js.rad_pose_current, js.rad_vel_current);
+      // LOG_INFO("[InfoJoint_arm] %s: pose=%.6f rad, vel=%.6f rad/s",
+      //   js.name.c_str(), js.rad_pose_current, js.rad_vel_current);
+    }
+    lock1.unlock();//解锁
   }
+
 
   // 输出当前 map 中所有关节数据
   // LOG_INFO("[InfoJoint_arm] 当前共 %zu 个关节数据:", InfoJoint_arm.size());
@@ -55,9 +83,10 @@ void TopicJoint_arm::joint_states_callback(const sensor_msgs::msg::JointState::S
 }
 
 // ======================== 升降伺服话题订阅模块 ========================
-void TopicJoint_lift::init(rclcpp::Node * node)
+void TopicJoint_lift::init(rclcpp::Node * node,std::mutex* mute)
 {
   node_ = node;
+  mutex_ = mute;
 
   // 订阅 /joint_state/lift_servo 话题
   lift_servo_sub_ = node_->create_subscription<sensor_msgs::msg::JointState>(
@@ -69,27 +98,28 @@ void TopicJoint_lift::init(rclcpp::Node * node)
 
 void TopicJoint_lift::lift_servo_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
 {
-  size_t joint_cnt = std::min(msg->name.size(), msg->position.size());
-  LOG_INFO("收到 /joint_state/lift_servo 关节状态，共 %zu 个关节", joint_cnt);
-
+    size_t joint_cnt = std::min(msg->name.size(), msg->position.size());
+    if(joint_cnt != 1)
+    {
+      return;
+    }
   // lift_servo 通常只有1个关节，保存到 InfoJoint_lift
-  if (joint_cnt > 0)
-  {
-    InfoJoint_lift.name = msg->name[0];
-    InfoJoint_lift.rad_pose_current = static_cast<float>(msg->position[0]);
-    InfoJoint_lift.rad_vel_current = (msg->velocity.size() > 0) ? static_cast<float>(msg->velocity[0]) : 0.0f;
-    InfoJoint_lift.mode = 0;
-    InfoJoint_lift.statues = 0;
-    InfoJoint_lift.error = 0;
-
-    LOG_INFO("[InfoJoint_lift] %s: pose=%.6f rad, vel=%.6f rad/s",
-      InfoJoint_lift.name.c_str(), InfoJoint_lift.rad_pose_current, InfoJoint_lift.rad_vel_current);
-  }
-
-  for (size_t i = 0; i < joint_cnt; i++)
-  {
-    LOG_INFO("  %s: %.6f rad", msg->name[i].c_str(), msg->position[i]);
-  }
+    std::unique_lock<std::mutex> lock1(*mutex_, std::defer_lock);
+    if(lock1.try_lock()) //获取到进行数据更新
+    {
+      InfoJoint_lift.name = msg->name[0];
+      InfoJoint_lift.rad_pose_current = static_cast<float>(msg->position[0]);
+      InfoJoint_lift.rad_vel_current = (msg->velocity.size() > 0) ? static_cast<float>(msg->velocity[0]) : 0.0f;
+      InfoJoint_lift.mode = 0;
+      InfoJoint_lift.statues = 0;
+      InfoJoint_lift.error = 0;
+      lock1.unlock();//解锁
+    }
+    
+    // for (size_t i = 0; i < joint_cnt; i++)
+    // {
+    //   LOG_INFO("收到 /joint_state/lift_servo 关节状态  %s: %.6f rad", msg->name[i].c_str(), msg->position[i]);
+    // }
 }
 
 // ======================== arm健康话题订阅模块 ========================
@@ -323,6 +353,102 @@ void ServiceExecCmd_arms::handle_response(rclcpp::Client<ExecArmsSrvCmd>::Shared
 
 }
 
+// ======================== SrvServoCmd 服务客户端模块 ========================
+void ServiceSrvServoCmd::init(rclcpp::Node * node)
+{
+  node_ = node;
+
+  srv_servo_cmd_client_ = node_->create_client<SrvServoCmd>("/servocmd/srvservocmd");
+  LOG_INFO("已创建服务客户端: /servocmd/srvservocmd");
+}
+
+bool ServiceSrvServoCmd::send_command(const srv_servo_cmd_request_ & req_config, double timeout)
+{
+  if (!srv_servo_cmd_client_->wait_for_service(std::chrono::seconds(20)))
+  {
+    LOG_WARN("服务 /servocmd/srvservocmd 不可用");
+    last_result_.call_success = false;
+    return false;
+  }
+
+  auto request = std::make_shared<SrvServoCmd::Request>();
+  request->master_name = req_config.master_name;
+  request->node_id = req_config.node_id;
+  request->command_id = req_config.command_id;
+  request->seq = req_config.seq;
+  request->aim_pos = req_config.aim_pos;
+  request->aim_vel = req_config.aim_vel;
+  request->dec = req_config.dec;
+
+  last_result_.call_success = true;
+
+  // 重置响应标志
+  {
+    std::lock_guard<std::mutex> lk(mutex_);
+    response_received_ = false;
+  }
+
+  // 异步发送请求，响应回调为 handle_response
+  srv_servo_cmd_client_->async_send_request(
+    request,
+    std::bind(&ServiceSrvServoCmd::handle_response, this, std::placeholders::_1));
+
+  LOG_INFO("已发送 SrvServoCmd 请求: master=%s, node_id=%u, command_id=%u, aim_pos=%.3f, aim_vel=%.3f，阻塞等待响应...",
+    req_config.master_name.c_str(), req_config.node_id, req_config.command_id,
+    req_config.aim_pos, req_config.aim_vel);
+
+  // 阻塞等待 handle_response 回调通知，最多等待 timeout 秒
+  std::unique_lock<std::mutex> lk(mutex_);
+  bool success = cv_.wait_for(lk, std::chrono::duration<double>(timeout), [this] {
+    return response_received_;
+  });
+
+  if (!success)
+  {
+    LOG_ERROR("SrvServoCmd 请求超时（%.1f秒），未收到响应", timeout);
+    last_result_.call_success = false;
+    return false;
+  }
+
+  LOG_INFO("SrvServoCmd 阻塞等待完成，收到响应");
+  return last_result_.call_success;
+}
+
+bool ServiceSrvServoCmd::send_command_from_config(double timeout)
+{
+  return send_command(cmd_request_, timeout);
+}
+
+void ServiceSrvServoCmd::handle_response(rclcpp::Client<SrvServoCmd>::SharedFuture future)
+{
+  auto response = future.get();
+  if (!response)
+  {
+    LOG_ERROR("SrvServoCmd 响应为空");
+    last_result_.call_success = false;
+    // 通知等待线程，即使是空响应也要解除阻塞
+    std::lock_guard<std::mutex> lk(mutex_);
+    response_received_ = true;
+    cv_.notify_one();
+    return;
+  }
+
+  last_result_.statues = response->statues;
+  last_result_.act_pos = response->act_pos;
+  last_result_.errid = response->errid;
+  last_result_.call_success = true;
+
+  LOG_INFO("[SrvServoCmd 异步响应] statues=%u, act_pos=%.3f, errid=%u",
+    last_result_.statues, last_result_.act_pos, last_result_.errid);
+
+  // 通知阻塞的 send_command 线程：响应已收到
+  {
+    std::lock_guard<std::mutex> lk(mutex_);
+    response_received_ = true;
+    cv_.notify_one();
+  }
+}
+
 // ======================== 服务端模块 ========================
 void ServiceTest_MoveAxis::init(rclcpp::Node * node)
 {
@@ -528,7 +654,19 @@ RobotCtrol::RobotCtrol(const rclcpp::NodeOptions & options)
 : Node("robot_ctrol_node", options)
 {
     bis_stop = false;
+   
 
+}
+
+RobotCtrol::~RobotCtrol()
+{
+    // 停止 taskpool 线程
+    bis_stop = true;
+    if (taskpool_thread_.joinable())
+    {
+        taskpool_thread_.join();
+    }
+    LOG_INFO("RobotCtrol 析构完成，taskpool 线程已停止");
 }
 
 bool RobotCtrol::init()
@@ -557,10 +695,10 @@ bool RobotCtrol::init()
     //tcp 初始化
     pobj_mdtcpserver->init();
     // 1. 初始化机械臂关节话题订阅模块
-    topic_arm_module_.init(this);
+    topic_arm_module_.init(this,&mutex_arm_data);
 
     // 2. 初始化升降伺服话题订阅模块
-    topic_lift_module_.init(this);
+    topic_lift_module_.init(this , &mutex_liftservo_data);
 
     // 3. 初始化arm健康话题订阅模块
     topic_health_arms_module_.init(this);
@@ -577,7 +715,10 @@ bool RobotCtrol::init()
     // 7. 初始化 ExecuteCommand 服务客户端模块
     service_execdmd_arms_.init(this);
 
-    
+    // 8. 初始化 SrvServoCmd 服务客户端模块
+    service_srv_servo_cmd_.init(this);
+
+
 
     LOG_INFO("RobotCtrol 节点已启动，等待事件...");
 
@@ -591,20 +732,96 @@ void RobotCtrol::taskpool()
 {
   // 10ms 周期任务：在此添加周期性业务逻辑
   //获取参数
-  pobj_mdtcpserver->getdown_Input_reg(0,pobj_mdpar->hold_reg.data,REGINDEX_HOLDREG_START);
-  pobj_mdpar->xch_word2bool_holdreg1();//获取按键信息
-  //cycle
+  LOG_INFO("taskpool is running ");
+  pobj_mdpar->show_reg.Reg.sta_system = 0;
+  LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
+  while (!bis_stop)
+  {
+     pobj_mdtcpserver->getdown_Input_reg(0,pobj_mdpar->hold_reg.data,REGINDEX_HOLDREG_START);
+    
+      pobj_mdpar->xch_word2bool_holdreg1();//获取按键信息
+
+      //cycle
+      switch (pobj_mdpar->show_reg.Reg.sta_system ) //系统总状态机
+      {
+        case 0: //初始状态
+          pobj_mdpar->show_reg.Reg.sta_system = 5;
+          LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
+          break;
+
+        case 5: //给lift servo进行op
+          service_srv_servo_cmd_.cmd_request_.master_name = "can0";
+          service_srv_servo_cmd_.cmd_request_.node_id = 1;
+          service_srv_servo_cmd_.cmd_request_.command_id = SERVO_POWERON;  // 例: 使能命令
+          service_srv_servo_cmd_.cmd_request_.seq = 0;
+          // 使用 send_command_from_config 异步发送请求，响应回调为 handle_response
+          service_srv_servo_cmd_.send_command_from_config(20.0);
+
+          if(service_srv_servo_cmd_.last_result_.errid == 0 && 
+            (service_srv_servo_cmd_.last_result_.statues & STAWORD_MASK) == STAWORD_OPEN2RUN_FBACK)
+            {
+              pobj_mdpar->show_reg.Reg.sta_system = 10;
+              LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
+            }
+          
+          break;
+
+          case 10: //给lift servo进行op
+            service_srv_servo_cmd_.cmd_request_.master_name = "can0";
+            service_srv_servo_cmd_.cmd_request_.node_id = 1;
+            service_srv_servo_cmd_.cmd_request_.command_id = SERVO_MVPOS_ABS;  // 例: 使能命令
+            service_srv_servo_cmd_.cmd_request_.seq = 0;
+            service_srv_servo_cmd_.cmd_request_.aim_pos = 20*CODEAXIS_RATIO_RPM;
+            service_srv_servo_cmd_.cmd_request_.aim_vel = 180*RATIO_VEL_DEC_RPM;
+            service_srv_servo_cmd_.cmd_request_.dec = 180*RATIO_VEL_DEC_RPM/60/1;
+            service_srv_servo_cmd_.send_command_from_config(50.0);
+
+            if(service_srv_servo_cmd_.last_result_.errid == 0 && 
+              (service_srv_servo_cmd_.last_result_.statues & STAWORD_MASK) == STAWORD_OPEN2RUN_FBACK)
+              {
+                pobj_mdpar->show_reg.Reg.sta_system = 15;
+                LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
+              }
+          
+          break;
+
+                case 15: //给lift servo进行op
+            service_srv_servo_cmd_.cmd_request_.master_name = "can0";
+            service_srv_servo_cmd_.cmd_request_.node_id = 1;
+            service_srv_servo_cmd_.cmd_request_.command_id = SERVO_MVPOS_ABS;  // 例: 使能命令
+            service_srv_servo_cmd_.cmd_request_.seq = 0;
+            service_srv_servo_cmd_.cmd_request_.aim_pos = 0;
+            service_srv_servo_cmd_.cmd_request_.aim_vel = 180*RATIO_VEL_DEC_RPM;
+            service_srv_servo_cmd_.cmd_request_.dec = 180*RATIO_VEL_DEC_RPM/60/1;
+            service_srv_servo_cmd_.send_command_from_config(50.0);
+
+            if(service_srv_servo_cmd_.last_result_.errid == 0 && 
+              (service_srv_servo_cmd_.last_result_.statues & STAWORD_MASK) == STAWORD_OPEN2RUN_FBACK)
+              {
+                pobj_mdpar->show_reg.Reg.sta_system = 10;
+                LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
+              }
+          
+          break;
+        
+        default:
+          break;
+      }
 
 
 
 
 
 
-  //上行参数
-  pobj_mdpar->hold_reg_last_save();//保持last状态
-  updata_pos_mutex();
-  pobj_mdtcpserver->update_Input_reg(0,pobj_mdpar->show_reg.data,REGINDEX_HOLDREG_START);
-
+      //上行参数
+      pobj_mdpar->hold_reg_last_save();//保持last状态
+      updata_pos_mutex();
+      pobj_mdtcpserver->update_Input_reg(0,pobj_mdpar->show_reg.data,REGINDEX_HOLDREG_START);
+      // 延时20毫秒
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  }
+  
+ 
 }
 
 void RobotCtrol::updata_pos_mutex()
@@ -647,11 +864,11 @@ void RobotCtrol::run()
   pobj_mdtcpserver->start();
   pobj_mdtcpserver->g_modbus_map->tab_registers[1] =10;
 
-  // 8. 创建 10ms 周期定时器 (taskpool)
-    timer_taskpool_ = this->create_wall_timer(
-      std::chrono::milliseconds(10),
-      std::bind(&RobotCtrol::taskpool, this));
-    LOG_INFO("已创建 10ms 周期定时器 (taskpool)");
+  
+  
+  // 8. 创建 taskpool 工作线程，使用 bind 绑定 taskpool，10ms 轮询延时
+  taskpool_thread_ = std::thread(&RobotCtrol::taskpool, this);
+  LOG_INFO("已创建 taskpool 工作线程 (20ms 周期)");
   // LOG_INFO("===== RobotCtrol run =====");
 
   // 根据命令字符串:
@@ -695,6 +912,19 @@ void RobotCtrol::run()
 
   // service_execdmd_arms_.send_command_from_config();
 
+  // ======================== SrvServoCmd 服务调用示例 ========================
+  // 设置请求参数到 cmd_request_
+  // service_srv_servo_cmd_.cmd_request_.master_name = "can0";
+  // service_srv_servo_cmd_.cmd_request_.node_id = 1;
+  // service_srv_servo_cmd_.cmd_request_.command_id = 0x01;  // 例: 使能命令
+  // service_srv_servo_cmd_.cmd_request_.seq = 0;
+  // service_srv_servo_cmd_.cmd_request_.aim_pos = 0.0f;
+  // service_srv_servo_cmd_.cmd_request_.aim_vel = 100.0f;
+  // service_srv_servo_cmd_.cmd_request_.dec = 0.0f;
+
+  // // 使用 send_command_from_config 异步发送请求，响应回调为 handle_response
+  // service_srv_servo_cmd_.send_command_from_config();
+
 }
 } // namespace robot_ctrol_node
 
@@ -703,6 +933,23 @@ int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
   auto node = std::make_shared<robot_ctrol_node::RobotCtrol>();
+  // node->init();
+
+  // // 在后台线程中执行 spin，使回调（如 handle_response）能够被处理
+  // std::thread spin_thread([node]() {
+  //   rclcpp::spin(node);
+  // });
+
+  // // 在主线程中执行 run()（包含阻塞的 send_command_from_config）
+  // node->run();
+
+  // // run() 结束后，不要调用 rclcpp::shutdown()，否则节点会立即退出
+  // // 等待 spin 线程结束（SIGINT 时 ROS2 会自动调用 rclcpp::shutdown）
+  // if (spin_thread.joinable())
+  // {
+  //   spin_thread.join();
+  // }
+
   node->init();
   node->run();
   rclcpp::spin(node);

@@ -321,6 +321,28 @@ namespace robot_ctrol_node
             std::string raw_command;        // 若非空，直接使用此命令字符串
         };
 
+        // ===================== SrvServoCmd 服务请求/响应结构体 =====================
+        /// @brief SrvServoCmd 服务请求配置
+        struct srv_servo_cmd_request_
+        {
+            std::string master_name;    // CAN主站名称
+            uint8_t node_id = 0;        // 节点ID
+            uint8_t command_id = 0;     // 命令ID
+            uint32_t seq = 0;           // 序列号
+            float aim_pos = 0.0f;       // 目标位置
+            float aim_vel = 0.0f;       // 目标速度
+            float dec = 0.0f;           // 减速度
+        };
+
+        /// @brief SrvServoCmd 服务响应结果
+        struct srv_servo_cmd_response_
+        {
+            uint16_t statues = 0;       // 状态字
+            float act_pos = 0.0f;       // 实际位置
+            uint8_t errid = 0;          // 错误码
+            bool call_success = false;  // 调用是否成功
+        };
+
         // ===================== ExecuteCommand 服务响应结构体 =====================
         struct exec_ArmsMoveCmd_info_
         {

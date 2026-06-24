@@ -6,6 +6,7 @@
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <my_interfaces/srv/srv_move_axis.hpp>
+#include <my_interfaces/srv/srv_servo_cmd.hpp>
 #include <my_interfaces/action/act_motor_cmd.hpp>
 #include <robot_controller/action/arm_motion.hpp>
 #include <robot_controller/srv/execute_command.hpp>
@@ -24,6 +25,11 @@
 #include "modbustcp_server.hpp"
 #include "transform.hpp"
 
+#include <mutex>
+#include <condition_variable>
+#include <thread>
+#include <chrono>
+
 using namespace std;
 namespace robot_ctrol_node
 {
@@ -39,13 +45,14 @@ struct TopicJoint_arm
 {
   /// @brief 初始化机械臂关节话题订阅器
   /// @param node 节点原始指针（生命周期由 RobotCtrol 保证）
-  void init(rclcpp::Node * node);
+  void init(rclcpp::Node * node,std::mutex* mute);
 
   /// @brief /joint_states 话题回调
   void joint_states_callback(const sensor_msgs::msg::JointState::SharedPtr msg);
 
   // 成员变量
   rclcpp::Node * node_ = nullptr;
+  std::mutex* mutex_= nullptr;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_states_sub_;
 
   std::map<std::string,joint_state_> InfoJoint_arm; //保存数据
@@ -57,14 +64,15 @@ struct TopicJoint_arm
 struct TopicJoint_lift
 {
   /// @brief 初始化升降伺服话题订阅器
-  /// @param node 节点原始指针（生命周期由 RobotCtrol 保证）
-  void init(rclcpp::Node * node);
+  /// @param node 节点原始指针（生命周期由 RobotCtrol 保证）mutex_进行数据互锁
+  void init(rclcpp::Node * node , std::mutex* mute );
 
   /// @brief /joint_state/lift_servo 话题回调
   void lift_servo_callback(const sensor_msgs::msg::JointState::SharedPtr msg);
 
   // 成员变量
   rclcpp::Node * node_ = nullptr;
+  std::mutex* mutex_= nullptr;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr lift_servo_sub_;
   joint_state_ InfoJoint_lift;
 };
@@ -178,6 +186,43 @@ struct ActMotion_arm
   bool arm_motion_success_;
 };
 
+// ==================== SrvServoCmd 服务客户端模块 ====================
+using SrvServoCmd = my_interfaces::srv::SrvServoCmd;
+
+struct ServiceSrvServoCmd
+{
+  /// @brief 初始化 SrvServoCmd 服务客户端
+  /// @param node 节点原始指针（生命周期由 RobotCtrol 保证）
+  void init(rclcpp::Node * node);
+
+  /// @brief 发送伺服命令（同步等待结果）
+  /// @param req_config 请求配置结构体
+  /// @param timeout  超时时间（秒）
+  /// @return 是否发送成功并收到响应
+  bool send_command(const srv_servo_cmd_request_ & req_config, double timeout = 5.0);
+
+  /// @brief 使用成员变量 cmd_request_ 发送命令
+  /// @param timeout  超时时间（秒）
+  /// @return 是否发送成功并收到响应
+  bool send_command_from_config(double timeout = 5.0);
+
+  /// @brief 服务响应回调
+  void handle_response(rclcpp::Client<SrvServoCmd>::SharedFuture future);
+
+  // 成员变量
+  rclcpp::Node * node_ = nullptr;
+  rclcpp::Client<SrvServoCmd>::SharedPtr srv_servo_cmd_client_;
+
+  std::mutex mutex_; //同步信号
+  std::condition_variable cv_;//环境变量
+  bool response_received_ = false; // 响应是否已收到
+
+  // 请求配置（供外部设置，send_command_from_config 使用）
+  srv_servo_cmd_request_ cmd_request_;
+  // 最近一次服务调用结果
+  srv_servo_cmd_response_ last_result_;
+};
+
 // ==================== MotorCmd Action 客户端模块 ====================
 struct ActMotion_lift
 {
@@ -215,7 +260,7 @@ class RobotCtrol : public rclcpp::Node
 {
 public:
   explicit RobotCtrol(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
-  ~RobotCtrol() = default;
+  ~RobotCtrol();
   bool init();
   void run();
 
@@ -226,7 +271,8 @@ private:
 
   bool bis_stop;
 
-  rclcpp::TimerBase::SharedPtr timer_taskpool_;  ///< 10ms 周期定时器
+  // rclcpp::TimerBase::SharedPtr timer_taskpool_;  ///< 10ms 周期定时器（已替换为线程）
+  std::thread taskpool_thread_;  ///< taskpool 工作线程
 
 
   TopicJoint_arm     topic_arm_module_;
@@ -234,6 +280,7 @@ private:
   TopicHealth_arms   topic_health_arms_module_;
   ServiceTest_MoveAxis   service_testAxis_;
   ServiceExecCmd_arms     service_execdmd_arms_;
+  ServiceSrvServoCmd      service_srv_servo_cmd_;
   ActMotion_arm Act_arm_motion_;
   ActMotion_lift  Act_liftmotor_motion_;
   std::shared_ptr<ModbusTcpServerCpp> pobj_mdtcpserver;

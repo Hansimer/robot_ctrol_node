@@ -624,14 +624,7 @@ namespace robot_ctrol_node
 
             };
 
-            void upload_par()
-            {
-                 write_float_to_word(out_handL,show_reg.Reg.pos_servo_handL_f2w_1,show_reg.Reg.pos_servo_handL_f2w_2);
-                write_float_to_word(out_handR,show_reg.Reg.pos_servo_handR_f2w_1,show_reg.Reg.pos_servo_handR_f2w_2);
-                
-                write_float_to_word(out_rotate,show_reg.Reg.pos_servo_rotate_f2w_1,show_reg.Reg.pos_servo_rotate_f2w_2);
-                write_float_to_word(out_head,show_reg.Reg.pos_servo_head_f2w_1,show_reg.Reg.pos_servo_head_f2w_2);
-            };           
+
 
 
 
