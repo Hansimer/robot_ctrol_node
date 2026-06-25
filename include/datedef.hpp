@@ -30,9 +30,12 @@ namespace robot_ctrol_node
             string name;
             float rad_pose_current;
             float rad_vel_current;
-            int8_t mode;
-            int8_t statues;
-            int8_t error;
+            uint8_t command_id;
+            uint8_t statues;
+            uint8_t error;
+            uint8_t req; //正在执行的序列
+            bool bbusy;
+            bool bdone;
         };
 
         struct pose_

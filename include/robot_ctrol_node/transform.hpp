@@ -531,7 +531,7 @@ namespace robot_ctrol_node
             hold_reg_ hold_reg_last;//写入数据
             modbus_btn_reg1_ hold_reg1_curr,hold_reg1_last ;//reg 1 实时数据            
             pose_ out_armL,out_armR;//用于显示左右臂位姿
-            float out_lift,out_rotate,out_head,out_handL,out_handR;
+            float out_rotate,out_head,out_handL,out_handR;
             pose_ in_armL,in_armR;//用于设置左右臂位姿
             float in_lift,in_rotate,in_head,in_handL,in_handR;
             
