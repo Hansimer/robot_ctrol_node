@@ -5,32 +5,10 @@
 #include <ament_index_cpp/get_package_prefix.hpp>
 #include "../include/robot_ctrol_node/transform.hpp"
 
+
 namespace robot_ctrol_node
 {
-
-  
-#define CODEAXIS_RATIO_RPM 65536
-#define RATIO_VEL_DEC_RPM 512.0*CODEAXIS_RATIO_RPM/1875
-#define RATIO_ACC_DEC_RPS 65536.0*CODEAXIS_RATIO_RPM/4000000
-
-
-#define STAWORD_MASK 0x03FF
-#define STAWORD_REACH_MASK 0x0637
-#define STAWORD_INI 0x0250
-#define STAWORD_INI2READY_6BACK 0x0231
-#define STAWORD_READY2OPEN_7BACK 0x0233
-#define STAWORD_OPEN2RUN_FBACK 0x0237
-#define STAWORD_ERR2NO_8BACK 0x0250
-#define STAWORD_ERR2STOP 0x021F
-#define STAWORD_ERR2ERR 0x0218
-
-    #define SERVO_POWERON 1 
-    #define SERVO_POWEROFF 2
-    #define SERVO_RSET 3
-    #define SERVO_SETVEL 4
-    #define SERVO_MVPOS_ABS 5
-    #define SERVO_STOP 6
-
+ 
 // ======================== 机械臂关节话题订阅模块 ========================
 void TopicJoint_arm::init(rclcpp::Node * node)
 {
@@ -70,14 +48,6 @@ void TopicJoint_arm::joint_states_callback(const sensor_msgs::msg::JointState::S
     lock1.unlock();//解锁
   }
 
-
-  // 输出当前 map 中所有关节数据
-  // LOG_INFO("[InfoJoint_arm] 当前共 %zu 个关节数据:", InfoJoint_arm.size());
-  // for (const auto & kv : InfoJoint_arm)
-  // {
-  //   const auto & js = kv.second;
-  //   LOG_INFO("  [%s] pose=%.6f, vel=%.6f", js.name.c_str(), js.rad_pose_current, js.rad_vel_current);
-  // }
 }
 
 // ======================== 升降伺服话题订阅模块 ========================
@@ -106,7 +76,7 @@ void TopicJoint_lift::lift_servo_callback(const my_interfaces::msg::MsgJointStat
     if(lock1.try_lock()) //获取到进行数据更新
     {
       InfoJoint_lift.name = msg->joint_state.name[0];
-      InfoJoint_lift.rad_pose_current = static_cast<float>(msg->joint_state.position[0])/CODEAXIS_RATIO_RPM;
+      InfoJoint_lift.rad_pose_current = static_cast<float>(msg->joint_state.position[0]);
       InfoJoint_lift.rad_vel_current = (msg->joint_state.velocity.size() > 0) ? static_cast<float>(msg->joint_state.velocity[0]) : 0.0f;
       InfoJoint_lift.command_id = msg->commanding;
       InfoJoint_lift.error = msg->errid ;
@@ -358,6 +328,7 @@ void ServiceExecCmd_arms::handle_response(rclcpp::Client<ExecArmsSrvCmd>::Shared
 void ServiceExecCmd_lift::init(rclcpp::Node * node)
 {
   node_ = node;
+  cmd_request_.seq =0;
 
   srv_servo_cmd_client_ = node_->create_client<SrvServoCmd>("/servocmd/srvservocmd");
   LOG_INFO("已创建服务客户端: /servocmd/srvservocmd");
@@ -519,90 +490,19 @@ void RobotCtrol::taskpool()
       {
         case 0: //初始状态
           pobj_mdpar->show_reg.Reg.sta_system = 5;
-          LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
+          pobj_mdpar->show_reg.Reg.sta_sub_action =0;          
           break;
 
         case 5: //给lift servo进行op
-          service_srv_servo_cmd_.cmd_request_.master_name = "can0";
-          service_srv_servo_cmd_.cmd_request_.node_id = 1;
-          service_srv_servo_cmd_.cmd_request_.command_id = SERVO_POWERON;  // 例: 使能命令
-          service_srv_servo_cmd_.cmd_request_.seq = 1;
-          // 使用 send_command_from_config 
-          service_srv_servo_cmd_.send_command_from_config(2);
-
-          if(service_srv_servo_cmd_.last_result_.call_success == true )
+          if(decode_action(param_robot.actions_init) == true)
           {
-              pobj_mdpar->show_reg.Reg.sta_system = 10;
-              LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
+            pobj_mdpar->show_reg.Reg.sta_system = 10;
           }
+          LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
           break;
-
+         
         case 10:
-            LOG_INFO("InfoJoint_lift.req is %d cmd_request_.seq is %d bbond is %d errid is %d",
-              topic_lift_module_.InfoJoint_lift.req,service_srv_servo_cmd_.cmd_request_.seq,
-            topic_lift_module_.InfoJoint_lift.bdone,topic_lift_module_.InfoJoint_lift.error);
-            if(topic_lift_module_.InfoJoint_lift.req == service_srv_servo_cmd_.cmd_request_.seq &&
-            topic_lift_module_.InfoJoint_lift.bdone ==  true && topic_lift_module_.InfoJoint_lift.error ==0)
-            {
-              pobj_mdpar->show_reg.Reg.sta_system = 15;
-              LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
-            } 
-            break;
-
-
-          case 15: //给lift servo进行op
-            service_srv_servo_cmd_.cmd_request_.master_name = "can0";
-            service_srv_servo_cmd_.cmd_request_.node_id = 1;
-            service_srv_servo_cmd_.cmd_request_.command_id = SERVO_MVPOS_ABS;  // 例: 使能命令
-            service_srv_servo_cmd_.cmd_request_.seq = service_srv_servo_cmd_.cmd_request_.seq+1;
-            service_srv_servo_cmd_.cmd_request_.aim_pos = 20*CODEAXIS_RATIO_RPM;
-            service_srv_servo_cmd_.cmd_request_.aim_vel = 180*RATIO_VEL_DEC_RPM;
-            service_srv_servo_cmd_.cmd_request_.dec = 180*RATIO_VEL_DEC_RPM/60/1;
-            service_srv_servo_cmd_.send_command_from_config(1.0);
-            if(service_srv_servo_cmd_.last_result_.call_success == true )
-            {
-                pobj_mdpar->show_reg.Reg.sta_system = 20;
-                LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
-            }
-            break;
-     
-
-          case 20: //给lift servo进行op
-            if(topic_lift_module_.InfoJoint_lift.req == service_srv_servo_cmd_.cmd_request_.seq &&
-            topic_lift_module_.InfoJoint_lift.bdone ==  true && topic_lift_module_.InfoJoint_lift.error ==0)
-            {
-              pobj_mdpar->show_reg.Reg.sta_system = 25;
-              LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
-            } 
-            break;
-
-          case 25:
-
-             service_srv_servo_cmd_.cmd_request_.master_name = "can0";
-            service_srv_servo_cmd_.cmd_request_.node_id = 1;
-            service_srv_servo_cmd_.cmd_request_.command_id = SERVO_MVPOS_ABS;  // 例: 使能命令
-            service_srv_servo_cmd_.cmd_request_.seq = service_srv_servo_cmd_.cmd_request_.seq+1;
-            service_srv_servo_cmd_.cmd_request_.aim_pos = 0;
-            service_srv_servo_cmd_.cmd_request_.aim_vel = 180*RATIO_VEL_DEC_RPM;
-            service_srv_servo_cmd_.cmd_request_.dec = 180*RATIO_VEL_DEC_RPM/60/1;
-            service_srv_servo_cmd_.send_command_from_config(1.0);
-            if(service_srv_servo_cmd_.last_result_.call_success == true )
-            {
-                pobj_mdpar->show_reg.Reg.sta_system = 30;
-                LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
-            }
-            break;
-     
-          case 30: //给lift servo进行op
-            if(topic_lift_module_.InfoJoint_lift.req == service_srv_servo_cmd_.cmd_request_.seq &&
-            topic_lift_module_.InfoJoint_lift.bdone ==  true && topic_lift_module_.InfoJoint_lift.error ==0)
-            {
-              pobj_mdpar->show_reg.Reg.sta_system = 15;
-              LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
-            } 
-            break;
-          
-          
+          break;  
         
         default:
           break;
@@ -658,6 +558,64 @@ void RobotCtrol::updata_pos_mutex()
 
 
 }
+
+/// @brief 
+bool RobotCtrol::decode_action(array_actions_info_ &par)
+{
+  //当运动自状态机大于运动条数+5，以5为步长进行设置状态机
+  
+  if(pobj_mdpar->show_reg.Reg.sta_sub_action > (par.actions.size()*10+5))
+  {
+    return true;
+  }
+   auto index = pobj_mdpar->show_reg.Reg.sta_sub_action /10;
+   auto type = par.actions.at(index).type; //获取类型
+
+   LOG_INFO("index is %d type is %d date is %f", index,type,par.actions.at(index).info_.action_data.d[0]);
+
+   if(type < 10 ) //延时
+   {
+
+   }
+   else if(type < 60) //双臂控制
+   {
+
+   }
+   else if(type < 70) //提升电机
+   {
+      if(pobj_mdpar->show_reg.Reg.sta_sub_action %10 ==0) //发送指令
+      {
+          service_srv_servo_cmd_.cmd_request_.seq+=1;
+          srv_servo_cmd_request_ reque;
+          transform::getliftMotionCmd(par.actions.at(index), service_srv_servo_cmd_.cmd_request_.seq,service_srv_servo_cmd_.cmd_request_);
+          // 使用 send_command_from_config 
+          service_srv_servo_cmd_.send_command_from_config(2);
+
+          if(service_srv_servo_cmd_.last_result_.call_success == true )
+          {
+              pobj_mdpar->show_reg.Reg.sta_sub_action +=5;
+              LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
+          }
+      }
+      else if(pobj_mdpar->show_reg.Reg.sta_sub_action %10 ==5) //等待返回
+      {
+        if(topic_lift_module_.InfoJoint_lift.req == service_srv_servo_cmd_.cmd_request_.seq &&
+          topic_lift_module_.InfoJoint_lift.bdone ==  true && topic_lift_module_.InfoJoint_lift.error ==0)
+          {
+            pobj_mdpar->show_reg.Reg.sta_sub_action +=5;
+            LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
+          } 
+
+      }
+
+    }
+    return false;
+  
+  
+
+}
+
+
 void RobotCtrol::run()
 {
   LOG_INFO("===== tcp server run =====");

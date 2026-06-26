@@ -182,6 +182,7 @@ private:
   /// @brief 10ms 周期定时器回调任务
   void taskpool();
   void updata_pos_mutex(); //互斥获取位置信息
+  bool decode_action(array_actions_info_ &par);//解析运动指令
 
   bool bis_stop;
 

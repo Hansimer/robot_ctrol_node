@@ -17,14 +17,7 @@ namespace robot_ctrol_node
 
 
                 action_info_.type 分配如下：
-                1： timedelay
-                2： 视觉触发
-                3：提升电机
-                4：旋转电机
-                5: neck电机
-                6：头部电机
-                7：right hand
-                8：left hand
+                1： timedelay           
 
                 //joint运动端                
                 12：左臂arm
@@ -39,14 +32,30 @@ namespace robot_ctrol_node
                 //pline运动端
                 32：左臂arm
                 33：右臂arm
-                34：双臂arm            
+                34：双臂arm   
+                
+                //hand joint move
+                42: 左手
+                43：右手
+            
+
+                //head joint move
+                52：neck
+                53: head
+                54: neck / head
+
+                //提升电机
+                61：提升电机使能 commandid=1
+                62：abs move commandid=5
             
             */
-            bool getArmMotionCmd(const action_info_ &par , exec_cmd_config_& command )
+            static bool getArmMotionCmd(const action_info_ &par , exec_cmd_config_& command )
             {
                 if(par.type != 12 && par.type != 13 && par.type != 14 && 
                     par.type != 22 && par.type != 23 && par.type != 24 && 
-                    par.type != 32 && par.type != 33 && par.type != 34              
+                    par.type != 32 && par.type != 33 && par.type != 34 && 
+                    par.type != 42 && par.type != 43   && 
+                    par.type != 52 && par.type != 53 && par.type != 54               
                 
                 )
                 {
@@ -66,15 +75,28 @@ namespace robot_ctrol_node
                 {
                     command.group = "dual_arms";
                 }
+                else if(par.type == 42 )
+                {
+                    command.group = "l_hand";
+                }
+                else if(par.type == 43 )
+                {
+                    command.group = "r_hand";
+                }
+                else if(par.type == 52 || par.type == 53 || par.type == 54)
+                {
+                    command.group = "head";
+                }
 
                 command.execute_motion = true; //执行
                 command.wait_for_result = true; //等待结果
-                command.timeout = 0.0; //延时时长
+                command.timeout = 30.0; //延时时长
 
                 switch(par.type )
                 {
                     case 12: //左臂joint 运动
                         command.goal_type = "joints";
+                        command.links="left_hand";
                         command.pipeline_id = "ompl";
                         command.planner_id = "RRTConnectkConfigDefault";
                         command.joints.clear();
@@ -125,6 +147,7 @@ namespace robot_ctrol_node
                     case 13: //右臂joint
                         command.goal_type = "joints";                        
                         command.pipeline_id = "ompl";
+                        command.links="right_hand";
                         command.planner_id = "RRTConnectkConfigDefault";
                         command.joints.clear();
                         {
@@ -175,6 +198,7 @@ namespace robot_ctrol_node
                         command.goal_type = "joints";                        
                         command.pipeline_id = "ompl";
                         command.planner_id = "RRTConnectkConfigDefault";
+                        command.links="left_hand,right_hand";
                         command.joints.clear();
                         {
                             joint_name_value_ j1;
@@ -263,9 +287,10 @@ namespace robot_ctrol_node
                         break;
                     //ptp
                     case 22: //左臂
-                        command.goal_type = "pose";                        
+                        command.goal_type = "pose";    
+                        command.links = "left_hand";                    
                         command.pipeline_id = "pilz_industrial_motion_planner";
-                        command.planner_id = "RRTConnectkConfigDefault";
+                        command.planner_id = "PTP";
                         {
                             std::stringstream ss;
                             for (size_t i = 0; i < 7; ++i)
@@ -279,9 +304,10 @@ namespace robot_ctrol_node
                         break;
 
                     case 23: //右臂
-                        command.goal_type = "pose";                        
+                        command.goal_type = "pose";  
+                        command.links = "right_hand";                       
                         command.pipeline_id = "pilz_industrial_motion_planner";
-                        command.planner_id = "RRTConnectkConfigDefault";
+                        command.planner_id = "PTP";
                         {
                             std::stringstream ss;
                             for (size_t i = 0; i < 7; ++i)
@@ -294,14 +320,21 @@ namespace robot_ctrol_node
                         break;
 
                     case 24: //双臂
-                        command.goal_type = "pose";                        
+                        command.goal_type = "multi_pose";   
+                        command.links = "right_hand,left_hand";                       
                         command.pipeline_id = "pilz_industrial_motion_planner";
-                        command.planner_id = "RRTConnectkConfigDefault";
+                        command.planner_id = "PTP";
                         {
                             std::stringstream ss;
-                            for (size_t i = 0; i < 14; ++i)
+                            for (size_t i = 0; i < 7; ++i)
                             {
                                 if (i > 0) ss << ",";
+                                ss << par.info_.action_data.d[i] ;
+                            }
+                            ss << ";";
+                            for (size_t i = 7; i < 14; ++i)
+                            {
+                                if (i > 7) ss << ",";
                                 ss << par.info_.action_data.d[i] ;
                             }
                             command.pose = ss.str();
@@ -310,9 +343,11 @@ namespace robot_ctrol_node
 
                     //pline    
                     case 32: //左臂
-                        command.goal_type = "pose";                        
+                        command.goal_type = "pose";     
+                        command.links = "left_hand";                     
                         command.pipeline_id = "pilz_industrial_motion_planner";
-                        command.planner_id = "LIN";
+                        command.planner_id = "lin";
+                        command.lin_position_only =1;
                         {
                             std::stringstream ss;
                             for (size_t i = 0; i < 7; ++i)
@@ -325,9 +360,11 @@ namespace robot_ctrol_node
                       
                         break;
                     case 33: //右臂
-                        command.goal_type = "pose";                        
+                        command.goal_type = "pose";      
+                        command.links = "right_hand";                    
                         command.pipeline_id = "pilz_industrial_motion_planner";
-                        command.planner_id = "LIN";
+                        command.planner_id = "lin";
+                        command.lin_position_only =1;
                         {
                             std::stringstream ss;
                             for (size_t i = 0; i < 7; ++i)
@@ -339,17 +376,86 @@ namespace robot_ctrol_node
                         }
                         break;
                     case 34: //双臂
-                        command.goal_type = "pose";                        
+                        command.goal_type = "pose"; 
+                        command.links = "right_hand,left_hand";                         
                         command.pipeline_id = "pilz_industrial_motion_planner";
-                        command.planner_id = "LIN";
+                        command.planner_id = "lin";
+                        command.lin_position_only =1;
                         {
                             std::stringstream ss;
-                            for (size_t i = 0; i < 14; ++i)
+                            for (size_t i = 0; i < 7; ++i)
                             {
                                 if (i > 0) ss << ",";
                                 ss << par.info_.action_data.d[i] ;
                             }
+                            ss << ";";
+                            for (size_t i = 7; i < 14; ++i)
+                            {
+                                if (i > 7) ss << ",";
+                                ss << par.info_.action_data.d[i] ;
+                            }
                             command.pose = ss.str();
+                        }
+                        break;
+                    
+                    case 42: //左手
+                        command.goal_type = "joints"; 
+                        command.joints.clear();
+                        {
+                            joint_name_value_ j1;
+                            j1.joint_name = "left_hand_virtual_joint";
+                            j1.value = par.info_.Axis_servo_pose.dis;
+                            command.joints.push_back(j1);
+                        }
+                        break;
+
+                    case 43: //右手
+                        command.goal_type = "joints"; 
+                        command.joints.clear();
+                        {
+                            joint_name_value_ j1;
+                            j1.joint_name = "right_hand_virtual_joint";
+                            j1.value = par.info_.Axis_servo_pose.dis;
+                            command.joints.push_back(j1);
+                        }
+                        break;
+
+                    case 52://neck
+                        command.goal_type = "joints"; 
+                        command.joints.clear();
+                        {
+                            joint_name_value_ j1;
+                            j1.joint_name = "neck_joint";
+                            j1.value = par.info_.Axis_servo_pose.dis;
+                            command.joints.push_back(j1);
+                        }
+                        break;
+                        
+                    case 53://head
+                        command.goal_type = "joints"; 
+                        command.joints.clear();
+                        {
+                            joint_name_value_ j1;
+                            j1.joint_name = "head_joint";
+                            j1.value = par.info_.Axis_servo_pose.dis;
+                            command.joints.push_back(j1);
+                        }
+                        break;
+
+                    case 54://head
+                        command.goal_type = "joints"; 
+                        command.joints.clear();
+                        {
+                            joint_name_value_ j1;
+                            j1.joint_name = "head_joint";
+                            j1.value = par.info_.Axis_servo_pose.dis;
+                            command.joints.push_back(j1);
+                        }
+                        {
+                            joint_name_value_ j2;
+                            j2.joint_name = "head_joint";
+                            j2.value = par.info_.Axis_servo_pose.dis;
+                            command.joints.push_back(j2);
                         }
                         break;
                         
@@ -364,8 +470,56 @@ namespace robot_ctrol_node
                 return true;
             };
 
+            #define RATIO_ROTATE2LINE_M2R_LIFTSERVO 1.0
+            #define CODEAXIS_RATIO_RPM_LIFTSERVO 65536.0
+            #define RATIO_VEL_DEC_RPM_LIFTSERVO 512.0*CODEAXIS_RATIO_RPM_LIFTSERVO/1875
+            #define RATIO_ACC_DEC_RPS_LIFTSERVO 65536.0*CODEAXIS_RATIO_RPM_LIFTSERVO/4000000
 
 
+            #define SERVO_POWERON 1 
+            #define SERVO_POWEROFF 2
+            #define SERVO_RSET 3
+            #define SERVO_SETVEL 4
+            #define SERVO_MVPOS_ABS 5
+            #define SERVO_STOP 6
+
+            static bool getliftMotionCmd(const action_info_ &par , uint32_t &req ,srv_servo_cmd_request_ & command )
+            {
+                if(par.type != 61 && par.type !=62)
+                {
+                    return false;
+                }
+                switch(par.type )
+                {
+                    case 61:
+                        command.master_name = "can0";
+                        command.command_id = SERVO_POWERON;
+                        command.node_id = 1;
+                        command.seq =req;
+                        break;
+
+                    case 62:
+                        command.master_name = "can0";
+                        command.command_id = SERVO_MVPOS_ABS;
+                        command.aim_pos = par.info_.Axis_servo_pose.dis * RATIO_ROTATE2LINE_M2R_LIFTSERVO*CODEAXIS_RATIO_RPM_LIFTSERVO;
+                        command.aim_vel = par.info_.Axis_servo_pose.vel * RATIO_VEL_DEC_RPM_LIFTSERVO;
+                        command.dec = par.info_.Axis_servo_pose.dec * RATIO_ACC_DEC_RPS_LIFTSERVO;
+                        command.node_id = 1;
+                        command.seq =req;
+                        break;
+
+                    default:
+                        break;
+                }
+
+
+                return true;
+            };
+
+            void switch_code2dis_liftservo(float &src, float &dec)
+            {
+                dec = src /RATIO_ROTATE2LINE_M2R_LIFTSERVO/CODEAXIS_RATIO_RPM_LIFTSERVO;
+            };
     };
 
 //获取制定

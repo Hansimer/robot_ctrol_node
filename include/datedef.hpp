@@ -177,6 +177,8 @@ namespace robot_ctrol_node
         struct Axis_servo_pose_
         {
             float dis;   
+            float vel;
+            float dec;
         };
 
 
