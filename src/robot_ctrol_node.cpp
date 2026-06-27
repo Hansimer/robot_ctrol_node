@@ -83,7 +83,7 @@ void TopicJoint_lift::lift_servo_callback(const my_interfaces::msg::MsgJointStat
       InfoJoint_lift.bbusy = msg->bbusy;
       InfoJoint_lift.bdone = msg->bdone;
       InfoJoint_lift.req = msg->req;
-       LOG_INFO("收到 /joint_state/lift_servo 关节状态  %s: %.6f rad", msg->joint_state.name[0].c_str(), msg->joint_state.position[0]);
+//       LOG_INFO("收到 /joint_state/lift_servo 关节状态  %s: %.6f rad", msg->joint_state.name[0].c_str(), msg->joint_state.position[0]);
       lock1.unlock();//解锁
     }
     
@@ -125,6 +125,48 @@ void TopicHealth_arms::health_arms_callback(const ethercat_control::msg::Bringup
     InfoHealth_arms.head_ready,
     InfoHealth_arms.l_hand_ready,
     InfoHealth_arms.r_hand_ready);
+}
+
+// ======================== arm_motion_controller 结果话题订阅模块 ========================
+void TopicArmMotionResult::init(rclcpp::Node * node)
+{
+  node_ = node;
+
+  // 订阅 /arm_motion_controller/result 话题
+  result_sub_ = node_->create_subscription<robot_controller::msg::CommandResult>(
+    "/arm_motion_controller/result",
+    10,
+    std::bind(&TopicArmMotionResult::result_callback, this, std::placeholders::_1));
+  LOG_INFO("已订阅 /arm_motion_controller/result");
+}
+
+void TopicArmMotionResult::result_callback(const robot_controller::msg::CommandResult::SharedPtr msg)
+{
+  std::unique_lock<std::mutex> lock1(mutex_, std::defer_lock);
+  if(lock1.try_lock()) //获取到进行数据更新
+  {
+    InfoArmMotionResult.command_id = msg->command_id;
+    InfoArmMotionResult.group = msg->group;
+    InfoArmMotionResult.goal_type = msg->goal_type;
+    InfoArmMotionResult.success = msg->success;
+    InfoArmMotionResult.moveit_code = msg->moveit_code;
+    InfoArmMotionResult.cartesian_fraction = msg->cartesian_fraction;
+    InfoArmMotionResult.executed = msg->executed;
+    InfoArmMotionResult.message = msg->message;
+    InfoArmMotionResult.start_time_ns = static_cast<int64_t>(msg->start_time.sec) * 1000000000LL + msg->start_time.nanosec;
+    InfoArmMotionResult.end_time_ns = static_cast<int64_t>(msg->end_time.sec) * 1000000000LL + msg->end_time.nanosec;
+
+    LOG_INFO("[InfoArmMotionResult] command_id=%s, group=%s, goal_type=%s, success=%d, moveit_code=%d, executed=%d, message=%s",
+      InfoArmMotionResult.command_id.c_str(),
+      InfoArmMotionResult.group.c_str(),
+      InfoArmMotionResult.goal_type.c_str(),
+      InfoArmMotionResult.success,
+      InfoArmMotionResult.moveit_code,
+      InfoArmMotionResult.executed,
+      InfoArmMotionResult.message.c_str());
+
+    lock1.unlock();//解锁
+  }
 }
 
 // ======================== arm 服务客户端模块 ========================
@@ -294,6 +336,7 @@ void ServiceExecCmd_arms::handle_response(rclcpp::Client<ExecArmsSrvCmd>::Shared
   }
 
   // 将响应映射到 exec_ArmsMoveCmd_info_ 结构体
+  std::unique_lock<std::mutex> lock1( mutex_ );
   last_result_.accepted = response->accepted;
   last_result_.command_id = response->command_id;
   last_result_.success = response->success;
@@ -447,7 +490,10 @@ bool RobotCtrol::init()
     // 3. 初始化arm健康话题订阅模块
     topic_health_arms_module_.init(this);
 
-    // 4. 初始化服务端模块
+    // 4. 初始化 arm_motion_controller 结果话题订阅模块
+    topic_arm_motion_result_module_.init(this);
+
+    // 5. 初始化服务端模块
     // service_testAxis_.init(this);
 
     // 5. 初始化 ArmMotion Action 客户端模块
@@ -498,7 +544,7 @@ void RobotCtrol::taskpool()
           {
             pobj_mdpar->show_reg.Reg.sta_system = 10;
           }
-          LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
+//          LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
           break;
          
         case 10:
@@ -564,7 +610,7 @@ bool RobotCtrol::decode_action(array_actions_info_ &par)
 {
   //当运动自状态机大于运动条数+5，以5为步长进行设置状态机
   
-  if(pobj_mdpar->show_reg.Reg.sta_sub_action > (par.actions.size()*10+5))
+  if(pobj_mdpar->show_reg.Reg.sta_sub_action >= (par.actions.size()*10))
   {
     return true;
   }
@@ -579,7 +625,46 @@ bool RobotCtrol::decode_action(array_actions_info_ &par)
    }
    else if(type < 60) //双臂控制
    {
+      if(pobj_mdpar->show_reg.Reg.sta_sub_action %10 ==0) //发送指令
+      {
+          transform::getArmMotionCmd(par.actions.at(index), service_execdmd_arms_.cmd_config_);
+          service_execdmd_arms_.send_command_from_config();         
+          pobj_mdpar->show_reg.Reg.sta_sub_action +=2;
+          std::unique_lock<std::mutex> lock1( service_execdmd_arms_.mutex_ );
+          service_execdmd_arms_.last_result_.success =false ;
+          service_execdmd_arms_.last_call_success_= false;
 
+      }
+      else if(pobj_mdpar->show_reg.Reg.sta_sub_action %10 ==2) //waiting for callback
+      {
+        std::unique_lock<std::mutex> lock1( service_execdmd_arms_.mutex_ );
+        if(service_execdmd_arms_.last_result_.success == true && service_execdmd_arms_.last_result_.result_group ==service_execdmd_arms_.cmd_config_.group)
+          {
+            pobj_mdpar->show_reg.Reg.sta_sub_action +=3;
+            LOG_INFO("sta_sub_action1 state is %d ",pobj_mdpar->show_reg.Reg.sta_sub_action && service_execdmd_arms_.last_result_.result_group ==service_execdmd_arms_.cmd_config_.group);
+          }
+        else if(service_execdmd_arms_.last_call_success_== true )
+        {
+          //没有接收成功，需要重新发送
+          pobj_mdpar->show_reg.Reg.sta_sub_action =(pobj_mdpar->show_reg.Reg.sta_sub_action /10)*10;
+            LOG_INFO("retry cmd arm %d ",pobj_mdpar->show_reg.Reg.sta_sub_action);
+
+        }
+
+      }
+      else if(pobj_mdpar->show_reg.Reg.sta_sub_action %10 ==5) //等待返回
+      {
+        LOG_INFO("InfoArmMotionResult.command_id is %d ",topic_arm_motion_result_module_.InfoArmMotionResult.command_id);
+        LOG_INFO("service_execdmd_arms_.last_result_.command_id is %d ",service_execdmd_arms_.last_result_.command_id);
+        if(topic_arm_motion_result_module_.InfoArmMotionResult.command_id == service_execdmd_arms_.last_result_.command_id
+        && topic_arm_motion_result_module_.InfoArmMotionResult.executed ==true && service_execdmd_arms_.last_result_.result_group ==topic_arm_motion_result_module_.InfoArmMotionResult.group)
+           
+          {
+            pobj_mdpar->show_reg.Reg.sta_sub_action +=5;
+            LOG_INFO("sta_sub_action2 state is %d ",pobj_mdpar->show_reg.Reg.sta_sub_action);
+          } 
+
+      }
    }
    else if(type < 70) //提升电机
    {

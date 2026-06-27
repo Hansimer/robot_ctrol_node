@@ -348,6 +348,21 @@ namespace robot_ctrol_node
             bool call_success = false;  // 调用是否成功
         };
 
+        // ===================== ArmMotion CommandResult 订阅结果结构体 =====================
+        struct arm_motion_result_info_
+        {
+            std::string command_id;
+            std::string group;
+            std::string goal_type;
+            bool success = false;
+            int32_t moveit_code = 0;
+            double cartesian_fraction = 0.0;
+            bool executed = false;
+            std::string message;
+            int64_t start_time_ns = 0;  // 起始时间（纳秒时间戳）
+            int64_t end_time_ns = 0;    // 结束时间（纳秒时间戳）
+        };
+
         // ===================== ExecuteCommand 服务响应结构体 =====================
         struct exec_ArmsMoveCmd_info_
         {

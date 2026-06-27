@@ -12,6 +12,7 @@
 #include <robot_controller/action/arm_motion.hpp>
 #include <robot_controller/srv/execute_command.hpp>
 #include <ethercat_control/msg/bringup_health.hpp>
+#include <robot_controller/msg/command_result.hpp>
 
 #include <memory>
 #include <map>
@@ -130,6 +131,7 @@ struct ServiceExecCmd_arms
   exec_cmd_config_ cmd_config_;
   // 最近一次服务调用结果
   exec_ArmsMoveCmd_info_ last_result_;
+  std::mutex mutex_; //同步信号
   bool last_call_success_ = false;
 };
 
@@ -169,6 +171,24 @@ struct ServiceExecCmd_lift
 };
 
 
+// ==================== arm_motion_controller 结果话题订阅模块 ====================
+struct TopicArmMotionResult
+{
+  /// @brief 初始化 arm_motion_controller/result 话题订阅器
+  /// @param node 节点原始指针（生命周期由 RobotCtrol 保证）
+  void init(rclcpp::Node * node);
+
+  /// @brief /arm_motion_controller/result 话题回调
+  void result_callback(const robot_controller::msg::CommandResult::SharedPtr msg);
+
+  // 成员变量
+  rclcpp::Node * node_ = nullptr;
+  std::mutex mutex_;
+  rclcpp::Subscription<robot_controller::msg::CommandResult>::SharedPtr result_sub_;
+
+  arm_motion_result_info_ InfoArmMotionResult;  // 保存数据
+};
+
 // ==================== 主节点类 ====================
 class RobotCtrol : public rclcpp::Node
 {
@@ -193,6 +213,7 @@ private:
   TopicJoint_arm     topic_arm_module_;
   TopicJoint_lift    topic_lift_module_;
   TopicHealth_arms   topic_health_arms_module_;
+  TopicArmMotionResult topic_arm_motion_result_module_;
   ServiceExecCmd_arms     service_execdmd_arms_;
   ServiceExecCmd_lift      service_srv_servo_cmd_;
   std::shared_ptr<ModbusTcpServerCpp> pobj_mdtcpserver;
