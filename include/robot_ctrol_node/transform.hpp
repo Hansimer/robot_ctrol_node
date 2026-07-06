@@ -470,7 +470,7 @@ namespace robot_ctrol_node
                 return true;
             };
 
-            #define RATIO_ROTATE2LINE_M2R_LIFTSERVO 1.0
+           
             #define CODEAXIS_RATIO_RPM_LIFTSERVO 65536.0
             #define RATIO_VEL_DEC_RPM_LIFTSERVO 512.0*CODEAXIS_RATIO_RPM_LIFTSERVO/1875
             #define RATIO_ACC_DEC_RPS_LIFTSERVO 65536.0*CODEAXIS_RATIO_RPM_LIFTSERVO/4000000
@@ -501,7 +501,7 @@ namespace robot_ctrol_node
                     case 62:
                         command.master_name = "can0";
                         command.command_id = SERVO_MVPOS_ABS;
-                        command.aim_pos = par.info_.Axis_servo_pose.dis * RATIO_ROTATE2LINE_M2R_LIFTSERVO*CODEAXIS_RATIO_RPM_LIFTSERVO;
+                        command.aim_pos = par.info_.Axis_servo_pose.dis *CODEAXIS_RATIO_RPM_LIFTSERVO;
                         command.aim_vel = par.info_.Axis_servo_pose.vel * RATIO_VEL_DEC_RPM_LIFTSERVO;
                         command.dec = par.info_.Axis_servo_pose.dec * RATIO_ACC_DEC_RPS_LIFTSERVO;
                         command.node_id = 1;
@@ -516,10 +516,10 @@ namespace robot_ctrol_node
                 return true;
             };
 
-            void switch_code2dis_liftservo(float &src, float &dec)
-            {
-                dec = src /RATIO_ROTATE2LINE_M2R_LIFTSERVO/CODEAXIS_RATIO_RPM_LIFTSERVO;
-            };
+            // void switch_code2dis_liftservo(float &src, float &dec)
+            // {
+            //     dec = src /RATIO_ROTATE2LINE_M2R_LIFTSERVO/CODEAXIS_RATIO_RPM_LIFTSERVO;
+            // };
     };
 
 //获取制定
@@ -528,80 +528,20 @@ namespace robot_ctrol_node
 #define SET_REG_BIT(val, bit)      ((val) | (1U << (bit)))
 // 清零指定bit
 #define CLR_REG_BIT(val, bit)      ((val) & ~(1U << (bit)))
-     struct modbus_input_date_
-        {
-            uint16_t sta_system;//系统总状态机 1
-            uint16_t sta_action;//运动状态 2
-            uint16_t sta_sub_action;//运动子状态 3
-            uint16_t errid_system;//系统总报警id 4
-            uint16_t errid_arm;//arm报警id 5
-            uint16_t errid_axis_lift;//升降电机报警 6
-            uint16_t errid_servers1; //7
-            uint16_t errid_servers2; //8
-            uint16_t errid_servers3; //9
-            /////////////////左臂
-            uint16_t pos_arml_x_f2w_1;//左臂位置信息10
-            uint16_t pos_arml_x_f2w_2;//左臂位置信息11
-            uint16_t pos_arml_y_f2w_1;//左臂位置信息12
-            uint16_t pos_arml_y_f2w_2;//左臂位置信息13
-            uint16_t pos_arml_z_f2w_1;//左臂位置信息14
-            uint16_t pos_arml_z_f2w_2;//左臂位置信息15
-            uint16_t pos_arml_rx_f2w_1;//左臂位置信息16
-            uint16_t pos_arml_rx_f2w_2;//左臂位置信息17
-            uint16_t pos_arml_ry_f2w_1;//左臂位置信息18
-            uint16_t pos_arml_ry_f2w_2;//左臂位置信息19
-            uint16_t pos_arml_rz_f2w_1;//左臂位置信息20
-            uint16_t pos_arml_rz_f2w_2;//左臂位置信息21
-            /////////////////////右臂
-            uint16_t pos_armr_x_f2w_1;//左臂位置信息22
-            uint16_t pos_armr_x_f2w_2;//左臂位置信息23
-            uint16_t pos_armr_y_f2w_1;//左臂位置信息24
-            uint16_t pos_armr_y_f2w_2;//左臂位置信息25
-            uint16_t pos_armr_z_f2w_1;//左臂位置信息26
-            uint16_t pos_armr_z_f2w_2;//左臂位置信息27
-            uint16_t pos_armr_rx_f2w_1;//左臂位置信息28
-            uint16_t pos_armr_rx_f2w_2;//左臂位置信息29
-            uint16_t pos_armr_ry_f2w_1;//左臂位置信息30
-            uint16_t pos_armr_ry_f2w_2;//左臂位置信息31
-            uint16_t pos_armr_rz_f2w_1;//左臂位置信息32
-            uint16_t pos_armr_rz_f2w_2;//左臂位置信息33
 
-            //提升电机位置
-            uint16_t pos_servo_lift_f2w_1;//左臂位置信息34
-            uint16_t pos_servo_lift_f2w_2;//左臂位置信息35
+            
 
-            //旋转
-            uint16_t pos_servo_rotate_f2w_1;//左臂位置信息36
-            uint16_t pos_servo_rotate_f2w_2;//左臂位置信息37
 
-            //头部
-            uint16_t pos_servo_head_f2w_1;//左臂位置信息38
-            uint16_t pos_servo_head_f2w_2;//左臂位置信息39
 
-            //左手
-            uint16_t pos_servo_handL_f2w_1;//左臂位置信息40
-            uint16_t pos_servo_handL_f2w_2;//左臂位置信息41
-
-            //右手
-            uint16_t pos_servo_handR_f2w_1;//左臂位置信息42
-            uint16_t pos_servo_handR_f2w_2;//左臂位置信息43
-
-        };
-
-        union input_reg_
-        {
-            uint16_t data[REGLEN_MAX_INPUT];
-            modbus_input_date_ Reg;
-        }; 
 
 //////////////modbus 通信保持型数据
-        struct modbus_btn_reg1_
+        struct modbus_btn_reg0_
         {
-            bool bfalg_2moveit;//无动力拖动or op
-            bool bfalg_2reset; //复位
-            bool bfalg_2stop; //停机
-            bool bflag_2next; //单步运行
-            bool bflag_2start;//开始运行
+            bool btn_2moveit;//无动力拖动or op
+            bool btn_2reset; //复位
+            bool btn_2stop; //停机
+            bool btn_2next; //单步运行
+            bool btn_2start;//开始运行
             bool btn_lift_2run;//提升电机运行
             bool btn_rotat_2run;//旋转电机运行
             bool btn_head_2run;//头部运行
@@ -609,81 +549,186 @@ namespace robot_ctrol_node
             bool btn_handR_2run;//手部运行
             bool btn_armL_2run;//手部运行
             bool btn_armR_2run;//手部运行
+            bool sw_type_armrun;//高为pline di为ptp
+        };
+        struct modbus_btn_reg1_
+        {
+            bool bfalg_isAuto;//无动力拖动or op
+            bool bfalg_AutoTask_done; //复位
+            bool bfalg_isManu; //停机
+            bool bfalg_ManuTask_done; //单步运行
+
         };
 
-
+        #define FLOATPAR_AIMPOS_START 83 //aimpos 开始索引 
+#pragma pack(push, 1)
          struct modbus_hold_date_
         {
-            uint16_t btn_reg[8];//系统总状态机 0-7 
-            uint16_t set_mode_run;// 1 自动运行  2 手动  3 半自动 8
-            uint16_t set_cmd; //执行指令 9
+            uint16_t btn_reg[10];//系统总状态机 0-9
+            uint16_t sta_system;//系统总状态机 10
+            uint16_t sta_action_disp;//运动状态 11
+            uint16_t sta_sub_action;//运动子状态 12
+            uint16_t errid_system;//系统总报警id 13
+            uint16_t errid_arm;//arm报警id 14
+            uint16_t errid_axis_lift;//升降电机报警 15
+            uint16_t set_mode_run;// 16 1 自动运行  2 手动  
+            uint16_t sta_action_set; //执行指令 17
+            uint16_t sta_manu_disp; //执行指令 18
+            uint16_t type_manu_disp; //手动操作类型 19
+            uint16_t system_heartbeat_cnt; //系统运行心跳计数器 20
+            uint16_t currpos_arml_1_1; // 当前位置信息，左臂1关节 21
+            uint16_t currpos_arml_1_2; // 当前位置信息，左臂1关节 22
+            uint16_t currpos_arml_2_1; // 当前位置信息，左臂1关节 23
+            uint16_t currpos_arml_2_2; // 当前位置信息，左臂1关节 24
+            uint16_t currpos_arml_3_1; // 当前位置信息，左臂1关节 25
+            uint16_t currpos_arml_3_2; // 当前位置信息，左臂1关节 26
+            uint16_t currpos_arml_4_1; // 当前位置信息，左臂1关节 27
+            uint16_t currpos_arml_4_2; // 当前位置信息，左臂1关节 28
+            uint16_t currpos_arml_5_1; // 当前位置信息，左臂1关节 29
+            uint16_t currpos_arml_5_2; // 当前位置信息，左臂1关节 30
+            uint16_t currpos_arml_6_1; // 当前位置信息，左臂1关节 31
+            uint16_t currpos_arml_6_2; // 当前位置信息，左臂1关节 32
+            uint16_t currpos_arml_7_1; // 当前位置信息，左臂1关节 33
+            uint16_t currpos_arml_7_2; // 当前位置信息，左臂1关节 34
 
-            uint16_t pos_arml_x_f2w_1;//左臂位置信息10
-            uint16_t pos_arml_x_f2w_2;//左臂位置信息11
-            uint16_t pos_arml_y_f2w_1;//左臂位置信息12
-            uint16_t pos_arml_y_f2w_2;//左臂位置信息13
-            uint16_t pos_arml_z_f2w_1;//左臂位置信息14
-            uint16_t pos_arml_z_f2w_2;//左臂位置信息15
-            uint16_t pos_arml_rx_f2w_1;//左臂位置信息16
-            uint16_t pos_arml_rx_f2w_2;//左臂位置信息17
-            uint16_t pos_arml_ry_f2w_1;//左臂位置信息18
-            uint16_t pos_arml_ry_f2w_2;//左臂位置信息19
-            uint16_t pos_arml_rz_f2w_1;//左臂位置信息20
-            uint16_t pos_arml_rz_f2w_2;//左臂位置信息21
-            /////////////////////右臂
-            uint16_t pos_armr_x_f2w_1;//左臂位置信息22
-            uint16_t pos_armr_x_f2w_2;//左臂位置信息23
-            uint16_t pos_armr_y_f2w_1;//左臂位置信息24
-            uint16_t pos_armr_y_f2w_2;//左臂位置信息25
-            uint16_t pos_armr_z_f2w_1;//左臂位置信息26
-            uint16_t pos_armr_z_f2w_2;//左臂位置信息27
-            uint16_t pos_armr_rx_f2w_1;//左臂位置信息28
-            uint16_t pos_armr_rx_f2w_2;//左臂位置信息29
-            uint16_t pos_armr_ry_f2w_1;//左臂位置信息30
-            uint16_t pos_armr_ry_f2w_2;//左臂位置信息31
-            uint16_t pos_armr_rz_f2w_1;//左臂位置信息32
-            uint16_t pos_armr_rz_f2w_2;//左臂位置信息33
+            uint16_t currpos_armr_1_1; // 当前位置信息，左臂1关节 35
+            uint16_t currpos_armr_1_2; // 当前位置信息，左臂1关节 36
+            uint16_t currpos_armr_2_1; // 当前位置信息，左臂1关节 37
+            uint16_t currpos_armr_2_2; // 当前位置信息，左臂1关节 38
+            uint16_t currpos_armr_3_1; // 当前位置信息，左臂1关节 39
+            uint16_t currpos_armr_3_2; // 当前位置信息，左臂1关节 40
+            uint16_t currpos_armr_4_1; // 当前位置信息，左臂1关节 41
+            uint16_t currpos_armr_4_2; // 当前位置信息，左臂1关节 42
+            uint16_t currpos_armr_5_1; // 当前位置信息，左臂1关节 43
+            uint16_t currpos_armr_5_2; // 当前位置信息，左臂1关节 44
+            uint16_t currpos_armr_6_1; // 当前位置信息，左臂1关节 45
+            uint16_t currpos_armr_6_2; // 当前位置信息，左臂1关节 46
+            uint16_t currpos_armr_7_1; // 当前位置信息，左臂1关节 47
+            uint16_t currpos_armr_7_2; // 当前位置信息，左臂1关节 48
 
-            //提升电机位置
-            uint16_t pos_servo_lift_f2w_1;//左臂位置信息34
-            uint16_t pos_servo_lift_f2w_2;//左臂位置信息35
+            uint16_t currpos_handl_1_1; // 当前位置信息，左手 49
+            uint16_t currpos_handl_1_2; // 当前位置信息，左手 50
+            uint16_t currpos_handr_1_1; // 当前位置信息，右手 51
+            uint16_t currpos_handr_1_2; // 当前位置信息，右手 52
+            uint16_t currpos_head_1_1; // 当前位置信息，左手 53
+            uint16_t currpos_head_1_2; // 当前位置信息，左手 54
+            uint16_t currpos_rotate_1_1; // 当前位置信息，左手 55
+            uint16_t currpos_rotate_1_2; // 当前位置信息，左手 56
+            uint16_t currpos_lift_1_1; // 当前位置信息，左手 57
+            uint16_t currpos_lift_1_2; // 当前位置信息，左手 58
 
-            //旋转
-            uint16_t pos_servo_rotate_f2w_1;//左臂位置信息36
-            uint16_t pos_servo_rotate_f2w_2;//左臂位置信息37
+            uint16_t currpos_arml_x_1; // 当前位置信息，左臂1关节 59
+            uint16_t currpos_arml_x_2; // 当前位置信息，左臂1关节 60
+            uint16_t currpos_arml_y_1; // 当前位置信息，左臂1关节 61
+            uint16_t currpos_arml_y_2; // 当前位置信息，左臂1关节 62
+            uint16_t currpos_arml_z_1; // 当前位置信息，左臂1关节 63
+            uint16_t currpos_arml_z_2; // 当前位置信息，左臂1关节 64
+            uint16_t currpos_arml_rx_1; // 当前位置信息，左臂1关节 65
+            uint16_t currpos_arml_rx_2; // 当前位置信息，左臂1关节 66
+            uint16_t currpos_arml_ry_1; // 当前位置信息，左臂1关节 67
+            uint16_t currpos_arml_ry_2; // 当前位置信息，左臂1关节 68
+            uint16_t currpos_arml_rz_1; // 当前位置信息，左臂1关节 69
+            uint16_t currpos_arml_rz_2; // 当前位置信息，左臂1关节 70
 
-            //头部
-            uint16_t pos_servo_head_f2w_1;//左臂位置信息38
-            uint16_t pos_servo_head_f2w_2;//左臂位置信息39
+            uint16_t currpos_armr_x_1; // 当前位置信息，左臂1关节 71
+            uint16_t currpos_armr_x_2; // 当前位置信息，左臂1关节 72
+            uint16_t currpos_armr_y_1; // 当前位置信息，左臂1关节 73
+            uint16_t currpos_armr_y_2; // 当前位置信息，左臂1关节 74
+            uint16_t currpos_armr_z_1; // 当前位置信息，左臂1关节 75
+            uint16_t currpos_armr_z_2; // 当前位置信息，左臂1关节 76
+            uint16_t currpos_armr_rx_1; // 当前位置信息，左臂1关节 77
+            uint16_t currpos_armr_rx_2; // 当前位置信息，左臂1关节 78
+            uint16_t currpos_armr_ry_1; // 当前位置信息，左臂1关节 79
+            uint16_t currpos_armr_ry_2; // 当前位置信息，左臂1关节 80
+            uint16_t currpos_armr_rz_1; // 当前位置信息，左臂1关节 81
+            uint16_t currpos_armr_rz_2; // 当前位置信息，左臂1关节 82
 
-            //左手
-            uint16_t pos_servo_handL_f2w_1;//左臂位置信息40
-            uint16_t pos_servo_handL_f2w_2;//左臂位置信息41
+            uint16_t aimpos_handl_1_1; // 当前位置信息，左手 83
+            uint16_t aimpos_handl_1_2; // 当前位置信息，左手 84
+            uint16_t aimpos_handr_1_1; // 当前位置信息，右手 85
+            uint16_t aimpos_handr_1_2; // 当前位置信息，右手 86
+            uint16_t aimpos_head_1_1; // 当前位置信息，左手 87
+            uint16_t aimpos_head_1_2; // 当前位置信息，左手 88
+            uint16_t aimpos_rotate_1_1; // 当前位置信息，左手 89
+            uint16_t aimpos_rotate_1_2; // 当前位置信息，左手 90
+            uint16_t aimpos_lift_1_1; // 当前位置信息，左手 91
+            uint16_t aimpos_lift_1_2; // 当前位置信息，左手 92
 
-            //右手
-            uint16_t pos_servo_handR_f2w_1;//左臂位置信息42
-            uint16_t pos_servo_handR_f2w_2;//左臂位置信息43
-            
+            uint16_t aimpos_arml_x_1; // 当前位置信息，左臂1关节 93
+            uint16_t aimpos_arml_x_2; // 当前位置信息，左臂1关节 94
+            uint16_t aimpos_arml_y_1; // 当前位置信息，左臂1关节 95
+            uint16_t aimpos_arml_y_2; // 当前位置信息，左臂1关节 96
+            uint16_t aimpos_arml_z_1; // 当前位置信息，左臂1关节 97
+            uint16_t aimpos_arml_z_2; // 当前位置信息，左臂1关节 98
+            uint16_t aimpos_arml_rx_1; // 当前位置信息，左臂1关节 99
+            uint16_t aimpos_arml_rx_2; // 当前位置信息，左臂1关节 100
+            uint16_t aimpos_arml_ry_1; // 当前位置信息，左臂1关节 101
+            uint16_t aimpos_arml_ry_2; // 当前位置信息，左臂1关节 102
+            uint16_t aimpos_arml_rz_1; // 当前位置信息，左臂1关节 103
+            uint16_t aimpos_arml_rz_2; // 当前位置信息，左臂1关节 104
 
+            uint16_t aimpos_armr_x_1; // 当前位置信息，左臂1关节 105
+            uint16_t aimpos_armr_x_2; // 当前位置信息，左臂1关节 106
+            uint16_t aimpos_armr_y_1; // 当前位置信息，左臂1关节 107
+            uint16_t aimpos_armr_y_2; // 当前位置信息，左臂1关节 108
+            uint16_t aimpos_armr_z_1; // 当前位置信息，左臂1关节 109
+            uint16_t aimpos_armr_z_2; // 当前位置信息，左臂1关节 110
+            uint16_t aimpos_armr_rx_1; // 当前位置信息，左臂1关节 111
+            uint16_t aimpos_armr_rx_2; // 当前位置信息，左臂1关节 112
+            uint16_t aimpos_armr_ry_1; // 当前位置信息，左臂1关节 113
+            uint16_t aimpos_armr_ry_2; // 当前位置信息，左臂1关节 114
+            uint16_t aimpos_armr_rz_1; // 当前位置信息，左臂1关节 115
+            uint16_t aimpos_armr_rz_2; // 当前位置信息，左臂1关节 116
 
         };
 
         union hold_reg_
         {
-            uint16_t data[REGLEN_MAX_HOLD];
+            uint16_t data[REGLEN_MAX_HOLD];//
             modbus_hold_date_ Reg;
         }; 
 
+#pragma pack(pop) // 恢复默认对齐
+        #define FLOATPAR_LEN 17 
+        // 1字节紧凑对齐，关闭填充
+#pragma pack(push, 1)
+        struct float_getpar_
+        {
+            float aim_handl;
+            float aim_handr;
+            float aim_head;
+            float aim_rotate;
+            float aim_lift;
+            float aim_arml_x;
+            float aim_arml_y;
+            float aim_arml_z;
+            float aim_arml_rx;
+            float aim_arml_ry;
+            float aim_arml_rz;
+            float aim_armr_x;
+            float aim_armr_y;
+            float aim_armr_z;
+            float aim_armr_rx;
+            float aim_armr_ry;
+            float aim_armr_rz;
+        };
+
+        union getpar_float_
+        {
+            float data[FLOATPAR_LEN];
+            float_getpar_ par;
+        }; 
+#pragma pack(pop) // 恢复默认对齐
 
     class mdreg_data
     {
         public:
             mdreg_data(){};
-            ~mdreg_data(){};
-            input_reg_ show_reg;//更新显示数据
+            ~mdreg_data(){};            
             hold_reg_ hold_reg;//写入数据
-            hold_reg_ hold_reg_last;//写入数据
-            modbus_btn_reg1_ hold_reg1_curr,hold_reg1_last ;//reg 1 实时数据            
+            getpar_float_ getfloat_par;//将数据转换为float
+            modbus_btn_reg0_ hold_BtnReg0_curr,hold_BtnReg0_last ;//reg 1 实时数据
+            modbus_btn_reg1_ hold_BtnReg1_cur;            
             pose_ out_armL,out_armR;//用于显示左右臂位姿
             float out_rotate,out_head,out_handL,out_handR;
             pose_ in_armL,in_armR;//用于设置左右臂位姿
@@ -693,26 +738,25 @@ namespace robot_ctrol_node
 
             void hold_reg_last_save()
             {
-                hold_reg_last = hold_reg;
-                hold_reg1_last = hold_reg1_curr;
+                hold_BtnReg0_last = hold_BtnReg0_curr;
             };
 
             void xch_word2bool_holdreg1()
             {
-                hold_reg1_curr.bfalg_2moveit = GET_REG_BIT_FAST(hold_reg.data[0],0);
-                hold_reg1_curr.bfalg_2reset = GET_REG_BIT_FAST(hold_reg.data[0],1);
-                hold_reg1_curr.bfalg_2stop = GET_REG_BIT_FAST(hold_reg.data[0],2);
-                hold_reg1_curr.bflag_2next = GET_REG_BIT_FAST(hold_reg.data[0],3);
-                hold_reg1_curr.bflag_2start = GET_REG_BIT_FAST(hold_reg.data[0],4);
-                hold_reg1_curr.btn_armL_2run = GET_REG_BIT_FAST(hold_reg.data[0],5);
-                hold_reg1_curr.btn_armR_2run = GET_REG_BIT_FAST(hold_reg.data[0],6);
-                hold_reg1_curr.btn_handL_2run = GET_REG_BIT_FAST(hold_reg.data[0],7);
-                hold_reg1_curr.btn_handR_2run = GET_REG_BIT_FAST(hold_reg.data[0],8);
-                hold_reg1_curr.btn_head_2run = GET_REG_BIT_FAST(hold_reg.data[0],9);
-                hold_reg1_curr.btn_lift_2run = GET_REG_BIT_FAST(hold_reg.data[0],10);
-                hold_reg1_curr.btn_rotat_2run = GET_REG_BIT_FAST(hold_reg.data[0],11);
+                hold_BtnReg0_curr.btn_2moveit = GET_REG_BIT_FAST(hold_reg.data[0],0);
+                hold_BtnReg0_curr.btn_2reset = GET_REG_BIT_FAST(hold_reg.data[0],1);
+                hold_BtnReg0_curr.btn_2stop = GET_REG_BIT_FAST(hold_reg.data[0],2);
+                hold_BtnReg0_curr.btn_2next = GET_REG_BIT_FAST(hold_reg.data[0],3);
+                hold_BtnReg0_curr.btn_2start = GET_REG_BIT_FAST(hold_reg.data[0],4);
+                hold_BtnReg0_curr.btn_armL_2run = GET_REG_BIT_FAST(hold_reg.data[0],5);
+                hold_BtnReg0_curr.btn_armR_2run = GET_REG_BIT_FAST(hold_reg.data[0],6);
+                hold_BtnReg0_curr.btn_handL_2run = GET_REG_BIT_FAST(hold_reg.data[0],7);
+                hold_BtnReg0_curr.btn_handR_2run = GET_REG_BIT_FAST(hold_reg.data[0],8);
+                hold_BtnReg0_curr.btn_head_2run = GET_REG_BIT_FAST(hold_reg.data[0],9);
+                hold_BtnReg0_curr.btn_lift_2run = GET_REG_BIT_FAST(hold_reg.data[0],10);
+                hold_BtnReg0_curr.btn_rotat_2run = GET_REG_BIT_FAST(hold_reg.data[0],11);
 
-            }
+            };
 
             void write_float_to_word(float& fvalue, uint16_t& value_L,uint16_t& value_H)
             {
@@ -750,31 +794,13 @@ namespace robot_ctrol_node
 
             };
 
-            void download_par()
+            void download_floatpar()
             {
-                in_armL.x = read_float_from_word(hold_reg.Reg.pos_arml_x_f2w_1, hold_reg.Reg.pos_arml_x_f2w_2 );
-                in_armL.y = read_float_from_word(hold_reg.Reg.pos_arml_y_f2w_1, hold_reg.Reg.pos_arml_y_f2w_2 );
-                in_armL.z = read_float_from_word(hold_reg.Reg.pos_arml_z_f2w_1, hold_reg.Reg.pos_arml_z_f2w_2 );
-                in_armL.rx = read_float_from_word(hold_reg.Reg.pos_arml_rx_f2w_1, hold_reg.Reg.pos_arml_rx_f2w_2 );
-                in_armL.ry = read_float_from_word(hold_reg.Reg.pos_arml_ry_f2w_1, hold_reg.Reg.pos_arml_ry_f2w_2 );
-                in_armL.rz = read_float_from_word(hold_reg.Reg.pos_arml_rz_f2w_1, hold_reg.Reg.pos_arml_rz_f2w_2 );
-
-                in_armR.x = read_float_from_word(hold_reg.Reg.pos_armr_x_f2w_1, hold_reg.Reg.pos_armr_x_f2w_2 );
-                in_armR.y = read_float_from_word(hold_reg.Reg.pos_armr_y_f2w_1, hold_reg.Reg.pos_armr_y_f2w_2 );
-                in_armR.z = read_float_from_word(hold_reg.Reg.pos_armr_z_f2w_1, hold_reg.Reg.pos_armr_z_f2w_2 );
-                in_armR.rx = read_float_from_word(hold_reg.Reg.pos_armr_rx_f2w_1, hold_reg.Reg.pos_armr_rx_f2w_2 );
-                in_armR.ry = read_float_from_word(hold_reg.Reg.pos_armr_ry_f2w_1, hold_reg.Reg.pos_armr_ry_f2w_2 );
-                in_armR.rz = read_float_from_word(hold_reg.Reg.pos_armr_rz_f2w_1, hold_reg.Reg.pos_armr_rz_f2w_2 );
-
-                in_handL = read_float_from_word(hold_reg.Reg.pos_servo_handL_f2w_1,hold_reg.Reg.pos_servo_handL_f2w_2);
-                in_handR = read_float_from_word(hold_reg.Reg.pos_servo_handR_f2w_1,hold_reg.Reg.pos_servo_handR_f2w_2);
-
-                in_lift = read_float_from_word(hold_reg.Reg.pos_servo_lift_f2w_1,hold_reg.Reg.pos_servo_lift_f2w_2);
-                in_head = read_float_from_word(hold_reg.Reg.pos_servo_head_f2w_1,hold_reg.Reg.pos_servo_head_f2w_2 );
-                in_rotate = read_float_from_word(hold_reg.Reg.pos_servo_rotate_f2w_1,hold_reg.Reg.pos_servo_rotate_f2w_2 );
-
-
-
+                for(int8_t i =0 ;i <FLOATPAR_LEN ;i++)
+                {
+                    getfloat_par.data[i] = read_float_from_word(hold_reg.data[FLOATPAR_AIMPOS_START+2*i],hold_reg.data[FLOATPAR_AIMPOS_START+2*i+1]);
+                  
+                }
 
             };
 

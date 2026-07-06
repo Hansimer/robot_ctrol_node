@@ -13,6 +13,7 @@
 #include <robot_controller/srv/execute_command.hpp>
 #include <ethercat_control/msg/bringup_health.hpp>
 #include <robot_controller/msg/command_result.hpp>
+#include <robot_controller/msg/end_effector_pose.hpp>
 
 #include <memory>
 #include <map>
@@ -189,6 +190,42 @@ struct TopicArmMotionResult
   arm_motion_result_info_ InfoArmMotionResult;  // 保存数据
 };
 
+// ==================== 左手末端位姿话题订阅模块 ====================
+struct TopicEefpos_handleft
+{
+  /// @brief 初始化左手末端位姿话题订阅器
+  /// @param node 节点原始指针（生命周期由 RobotCtrol 保证）
+  void init(rclcpp::Node * node);
+
+  /// @brief /eef_pose_publisher/left_hand 话题回调
+  void eef_pose_callback(const robot_controller::msg::EndEffectorPose::SharedPtr msg);
+
+  // 成员变量
+  rclcpp::Node * node_ = nullptr;
+  std::mutex mutex_;
+  rclcpp::Subscription<robot_controller::msg::EndEffectorPose>::SharedPtr eef_pose_sub_;
+
+  eef_pose_info_ InfoEefpos_handleft;  // 保存数据
+};
+
+// ==================== 右手末端位姿话题订阅模块 ====================
+struct TopicEefpos_handright
+{
+  /// @brief 初始化右手末端位姿话题订阅器
+  /// @param node 节点原始指针（生命周期由 RobotCtrol 保证）
+  void init(rclcpp::Node * node);
+
+  /// @brief /eef_pose_publisher/right_hand 话题回调
+  void eef_pose_callback(const robot_controller::msg::EndEffectorPose::SharedPtr msg);
+
+  // 成员变量
+  rclcpp::Node * node_ = nullptr;
+  std::mutex mutex_;
+  rclcpp::Subscription<robot_controller::msg::EndEffectorPose>::SharedPtr eef_pose_sub_;
+
+  eef_pose_info_ InfoEefpos_handright;  // 保存数据
+};
+
 // ==================== 主节点类 ====================
 class RobotCtrol : public rclcpp::Node
 {
@@ -201,6 +238,11 @@ public:
 private:
   /// @brief 10ms 周期定时器回调任务
   void taskpool();
+  void mode_auto();//自动运行程序
+  void mode_manu();//手动运行程序
+  bool mode_manu_lift();
+  bool mode_manu_arm_rotate_head_hand(const action_info_ &par);
+  void monitor();//系统监控程序
   void updata_pos_mutex(); //互斥获取位置信息
   bool decode_action(array_actions_info_ &par);//解析运动指令
 
@@ -214,6 +256,8 @@ private:
   TopicJoint_lift    topic_lift_module_;
   TopicHealth_arms   topic_health_arms_module_;
   TopicArmMotionResult topic_arm_motion_result_module_;
+  TopicEefpos_handleft   topic_eefpos_handleft_module_;
+  TopicEefpos_handright  topic_eefpos_handright_module_;
   ServiceExecCmd_arms     service_execdmd_arms_;
   ServiceExecCmd_lift      service_srv_servo_cmd_;
   std::shared_ptr<ModbusTcpServerCpp> pobj_mdtcpserver;

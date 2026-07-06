@@ -6,8 +6,16 @@
 #include "../include/robot_ctrol_node/transform.hpp"
 
 
+
 namespace robot_ctrol_node
 {
+
+
+  #define BOOLSHOW_REG1 1
+  #define BIT_IS_AUTO 0
+  #define BIT_IS_AUTO_DONE 1
+  #define BIT_IS_MANU 2
+  #define BIT_IS_MANU_DONE 3
  
 // ======================== 机械臂关节话题订阅模块 ========================
 void TopicJoint_arm::init(rclcpp::Node * node)
@@ -493,6 +501,12 @@ bool RobotCtrol::init()
     // 4. 初始化 arm_motion_controller 结果话题订阅模块
     topic_arm_motion_result_module_.init(this);
 
+    // 4.1 初始化左手末端位姿话题订阅模块
+    topic_eefpos_handleft_module_.init(this);
+
+    // 4.2 初始化右手末端位姿话题订阅模块
+    topic_eefpos_handright_module_.init(this);
+
     // 5. 初始化服务端模块
     // service_testAxis_.init(this);
 
@@ -518,36 +532,121 @@ bool RobotCtrol::init()
 
     return true;
 }
+/// @brief 
 void RobotCtrol::taskpool()
 {
   // 10ms 周期任务：在此添加周期性业务逻辑
   //获取参数
   LOG_INFO("taskpool is running ");
-  pobj_mdpar->show_reg.Reg.sta_system = 0;
-  LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
+  pobj_mdpar->hold_reg.Reg.sta_system = 0;
+  outtime_ wcdog_liftservo_op= {5,0,1200,0 };//延时监控 12s
+ 
   while (!bis_stop)
   {
-     pobj_mdtcpserver->getdown_Input_reg(0,pobj_mdpar->hold_reg.data,REGINDEX_HOLDREG_START);
     
-      pobj_mdpar->xch_word2bool_holdreg1();//获取按键信息
+     pobj_mdtcpserver->getdown_Input_reg(0,pobj_mdpar->hold_reg.data,REGLEN_MAX_HOLD*2);
+     pobj_mdpar->download_floatpar();//获取float类型     
+     pobj_mdpar->xch_word2bool_holdreg1();//获取按键信息
+
+      LOG_INFO("system state is %d ",pobj_mdpar->hold_reg.Reg.sta_system);
 
       //cycle
-      switch (pobj_mdpar->show_reg.Reg.sta_system ) //系统总状态机
+      switch (pobj_mdpar->hold_reg.Reg.sta_system ) //系统总状态机
       {
         case 0: //初始状态
-          pobj_mdpar->show_reg.Reg.sta_system = 5;
-          pobj_mdpar->show_reg.Reg.sta_sub_action =0;          
+          //waiting for arm ready
+          // if(topic_health_arms_module_.InfoHealth_arms.l_arm_ready ==true 
+          // && topic_health_arms_module_.InfoHealth_arms.r_arm_ready ==true
+          // && topic_health_arms_module_.InfoHealth_arms.moveit_ready ==true
+          // && topic_health_arms_module_.InfoHealth_arms.robot_control_ready ==true
+          // )
+          // {
+              pobj_mdpar->hold_reg.Reg.sta_system = 5;
+              pobj_mdpar->hold_reg.Reg.sta_sub_action =0;          
+              
+          // }
           break;
 
-        case 5: //给lift servo进行op
-          if(decode_action(param_robot.actions_init) == true)
+        case 5: //等待提升电机到位
+          if(topic_lift_module_.InfoJoint_lift.name == "lift_servo")
           {
-            pobj_mdpar->show_reg.Reg.sta_system = 10;
+            pobj_mdpar->hold_reg.Reg.sta_system = 10;
+            pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
+            wcdog_liftservo_op.retry_cnt =0 ;
+            wcdog_liftservo_op.outtime_cnt =0;
+
           }
-//          LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
+
+          break;
+
+        case 10: //提升电机使能
+          if(pobj_mdpar->hold_reg.Reg.sta_manu_disp ==0) //发送指令
+          {
+              wcdog_liftservo_op.outtime_cnt =0;             
+              service_srv_servo_cmd_.cmd_request_.seq+=1;
+              srv_servo_cmd_request_ reque;
+              action_info_ template_action;//使能
+              template_action.index = 0;
+              template_action.type = 61;
+              template_action.sub_index = 0;
+              transform::getliftMotionCmd(template_action, service_srv_servo_cmd_.cmd_request_.seq,service_srv_servo_cmd_.cmd_request_);
+              // 使用 send_command_from_config 
+              service_srv_servo_cmd_.send_command_from_config(2);
+
+              if(service_srv_servo_cmd_.last_result_.call_success == true )
+              {
+                  pobj_mdpar->hold_reg.Reg.sta_manu_disp =10;
+                  LOG_INFO("system state is %d ",pobj_mdpar->hold_reg.Reg.sta_manu_disp);
+              }
+          }
+          else if(pobj_mdpar->hold_reg.Reg.sta_manu_disp ==10) //等待返回
+          {
+            if(topic_lift_module_.InfoJoint_lift.req == service_srv_servo_cmd_.cmd_request_.seq &&
+              topic_lift_module_.InfoJoint_lift.bdone ==  true && topic_lift_module_.InfoJoint_lift.error ==0)
+              {
+                pobj_mdpar->hold_reg.Reg.sta_sub_action =20;
+                pobj_mdpar->hold_reg.Reg.sta_system = 15;
+                LOG_INFO("system state is %d ",pobj_mdpar->hold_reg.Reg.sta_manu_disp);
+                
+
+              } 
+            else
+            {
+              if(wcdog_liftservo_op.outtime_cnt++ > wcdog_liftservo_op.outtime_set)
+              {
+                if(wcdog_liftservo_op.retry_cnt ++ > wcdog_liftservo_op.retry_set) //等待10s 重新下发
+                {
+                  LOG_ERROR("Lift servo op failed");
+                  exit(0);//系统退出
+                }
+                pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
+              }
+              
+            }
+
+          }
+          break;
+        case 15: //大循环
+          if( pobj_mdpar->hold_reg.Reg.set_mode_run ==0) //自动模式
+          {
+            mode_auto();
+          }
+          else if(pobj_mdpar->hold_reg.Reg.set_mode_run ==1) //手动模式
+          {
+            mode_manu();
+          }
+
+          break;
+
+        case 100: //给lift servo进行op
+          // if(decode_action(param_robot.actions_init) == true)
+          // {
+          //   pobj_mdpar->hold_reg.Reg.sta_system = 15;
+          // }
+
           break;
          
-        case 10:
+        case 150:
           break;  
         
         default:
@@ -557,50 +656,448 @@ void RobotCtrol::taskpool()
 
 
 
-
+      monitor();
 
       //上行参数
       pobj_mdpar->hold_reg_last_save();//保持last状态
       updata_pos_mutex();
-      pobj_mdtcpserver->update_Input_reg(0,pobj_mdpar->show_reg.data,REGINDEX_HOLDREG_START);
-      // 延时20毫秒
+      pobj_mdtcpserver->update_Input_reg(0,pobj_mdpar->hold_reg.data,REGLEN_MAX_HOLD*2);
+            // 延时20毫秒
       std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
   
  
 }
 
+void RobotCtrol::mode_auto()
+{
+  if( pobj_mdpar->hold_BtnReg0_curr.btn_2start == true &&
+   pobj_mdpar->hold_BtnReg0_last.btn_2start == false) //沿检测
+   {
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_isAuto = true;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_AutoTask_done =false;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu = false;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_ManuTask_done =false;
+    pobj_mdpar->hold_reg.Reg.sta_sub_action =0;
+    pobj_mdpar->hold_reg.Reg.sta_action_disp = pobj_mdpar->hold_reg.Reg.sta_action_set;
+    LOG_INFO("start auto action mode ,action index is %d ",pobj_mdpar->hold_reg.Reg.sta_action_disp);    
+   }
+
+   if(pobj_mdpar->hold_BtnReg1_cur.bfalg_isAuto == true)
+   {
+      if(decode_action(param_robot.actions[pobj_mdpar->hold_reg.Reg.sta_action_disp]) == true)
+      {
+        pobj_mdpar->hold_BtnReg1_cur.bfalg_isAuto = false;
+        pobj_mdpar->hold_BtnReg1_cur.bfalg_AutoTask_done =true;
+        LOG_INFO("auto action mode done ");
+      }
+   }
+}
+
+void RobotCtrol::mode_manu()
+{
+
+  //提升点动
+  if( pobj_mdpar->hold_BtnReg0_curr.btn_lift_2run == true && pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu==false &&
+   pobj_mdpar->hold_BtnReg0_last.btn_lift_2run == false) //手动进行提升操作
+   {
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_isAuto = false;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_AutoTask_done =false;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu = true;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_ManuTask_done =false;
+    pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
+    pobj_mdpar->hold_reg.Reg.type_manu_disp =1;
+    //获取目标位置 与速度信息
+    LOG_INFO("start manu mode ,action index is lift servo ");
+   }
+
+    if(pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu == true && pobj_mdpar->hold_reg.Reg.type_manu_disp==1)
+    {
+      if(mode_manu_lift() == true)
+      {
+        pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu = false;
+        pobj_mdpar->hold_BtnReg1_cur.bfalg_ManuTask_done =true;
+        pobj_mdpar->hold_reg.Reg.type_manu_disp =0;
+        LOG_INFO("manu action mode done ");
+      }
+    }
+
+  //左臂 ptp
+  if( pobj_mdpar->hold_BtnReg0_curr.btn_armL_2run == true && pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu==false &&
+   pobj_mdpar->hold_BtnReg0_last.btn_armL_2run == false) //手动进行左臂操作
+   {
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_isAuto = false;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_AutoTask_done =false;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu = true;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_ManuTask_done =false;
+    pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
+    pobj_mdpar->hold_reg.Reg.type_manu_disp = 2;
+    LOG_INFO("start manu mode ,action index is left arm ");
+   }
+
+    if(pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu == true && pobj_mdpar->hold_reg.Reg.type_manu_disp ==2)
+    {
+      action_info_ par;
+      par.index = 0;
+      if(pobj_mdpar->hold_BtnReg0_curr.sw_type_armrun == false)
+      {
+        par.type = 22; //左臂
+      }
+      else
+      {
+        par.type = 32; //左臂
+      }      
+      par.sub_index = 0;
+      par.info_.action_data.d[0] = pobj_mdpar->getfloat_par.par.aim_arml_x;
+      par.info_.action_data.d[1] = pobj_mdpar->getfloat_par.par.aim_arml_y;
+      par.info_.action_data.d[2] = pobj_mdpar->getfloat_par.par.aim_arml_z;
+      par.info_.action_data.d[3] = pobj_mdpar->getfloat_par.par.aim_arml_rx;
+      par.info_.action_data.d[4] = pobj_mdpar->getfloat_par.par.aim_arml_ry;
+      par.info_.action_data.d[5] = pobj_mdpar->getfloat_par.par.aim_arml_rz;
+
+      if(mode_manu_arm_rotate_head_hand(par) == true)
+      {
+        pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu = false;
+        pobj_mdpar->hold_BtnReg1_cur.bfalg_ManuTask_done =true;
+        pobj_mdpar->hold_reg.Reg.type_manu_disp =0;
+         pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
+        LOG_INFO("manu action mode done ");
+      }
+    }
+
+  //右臂 ptp
+  if( pobj_mdpar->hold_BtnReg0_curr.btn_armR_2run == true && pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu==false &&
+   pobj_mdpar->hold_BtnReg0_last.btn_armR_2run == false) //手动进行右臂操作
+   {
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_isAuto = false;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_AutoTask_done =false;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu = true;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_ManuTask_done =false;
+    pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
+    pobj_mdpar->hold_reg.Reg.type_manu_disp = 3;
+    LOG_INFO("start manu mode ,action index is right arm ");
+   }
+
+   if(pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu == true && pobj_mdpar->hold_reg.Reg.type_manu_disp ==3)
+    {
+      action_info_ par;
+      par.index = 0;
+      if(pobj_mdpar->hold_BtnReg0_curr.sw_type_armrun == false)
+      {
+        par.type = 23; //右臂
+      }
+      else
+      {
+        par.type = 33; //右臂
+      }   
+      par.sub_index = 0;
+      par.info_.action_data.d[0] = pobj_mdpar->getfloat_par.par.aim_arml_x;
+      par.info_.action_data.d[1] = pobj_mdpar->getfloat_par.par.aim_arml_y;
+      par.info_.action_data.d[2] = pobj_mdpar->getfloat_par.par.aim_arml_z;
+      par.info_.action_data.d[3] = pobj_mdpar->getfloat_par.par.aim_arml_rx;
+      par.info_.action_data.d[4] = pobj_mdpar->getfloat_par.par.aim_arml_ry;
+      par.info_.action_data.d[5] = pobj_mdpar->getfloat_par.par.aim_arml_rz;
+
+      if(mode_manu_arm_rotate_head_hand(par) == true)
+      {
+        pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu = false;
+        pobj_mdpar->hold_BtnReg1_cur.bfalg_ManuTask_done =true;
+        pobj_mdpar->hold_reg.Reg.type_manu_disp =0;
+         pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
+        LOG_INFO("manu action mode done ");
+      }
+    }
+
+    //左手运动
+    if( pobj_mdpar->hold_BtnReg0_curr.btn_handL_2run == true && pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu==false &&
+   pobj_mdpar->hold_BtnReg0_last.btn_handL_2run == false) //手动进行右臂操作
+   {
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_isAuto = false;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_AutoTask_done =false;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu = true;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_ManuTask_done =false;
+    pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
+    pobj_mdpar->hold_reg.Reg.type_manu_disp = 4;
+    LOG_INFO("start manu mode ,action index is handl");
+   }
+
+   if(pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu == true && pobj_mdpar->hold_reg.Reg.type_manu_disp ==4)
+    {
+      action_info_ par;
+      par.index = 0;
+      par.type = 42; //右臂
+     
+      par.sub_index = 0;
+      par.info_.action_data.d[0] = pobj_mdpar->getfloat_par.par.aim_handl;
+      
+
+      if(mode_manu_arm_rotate_head_hand(par) == true)
+      {
+        pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu = false;
+        pobj_mdpar->hold_BtnReg1_cur.bfalg_ManuTask_done =true;
+        pobj_mdpar->hold_reg.Reg.type_manu_disp =0;
+         pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
+        LOG_INFO("manu handl action mode done ");
+      }
+    }
+
+
+        //右手运动
+    if( pobj_mdpar->hold_BtnReg0_curr.btn_handR_2run == true && pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu==false &&
+   pobj_mdpar->hold_BtnReg0_last.btn_handR_2run == false) //手动进行右臂操作
+   {
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_isAuto = false;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_AutoTask_done =false;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu = true;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_ManuTask_done =false;
+    pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
+    pobj_mdpar->hold_reg.Reg.type_manu_disp = 5;
+    LOG_INFO("start manu mode ,action index is handl");
+   }
+
+   if(pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu == true && pobj_mdpar->hold_reg.Reg.type_manu_disp ==5)
+    {
+      action_info_ par;
+      par.index = 0;
+      par.type = 43; //右臂
+     
+      par.sub_index = 0;
+      par.info_.action_data.d[0] = pobj_mdpar->getfloat_par.par.aim_handr;
+      
+
+      if(mode_manu_arm_rotate_head_hand(par) == true)
+      {
+        pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu = false;
+        pobj_mdpar->hold_BtnReg1_cur.bfalg_ManuTask_done =true;
+        pobj_mdpar->hold_reg.Reg.type_manu_disp =0;
+         pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
+        LOG_INFO("manu handl action mode done ");
+      }
+    }
+
+            //旋转运动
+    if( pobj_mdpar->hold_BtnReg0_curr.btn_rotat_2run == true && pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu==false &&
+   pobj_mdpar->hold_BtnReg0_last.btn_rotat_2run == false) //手动进行右臂操作
+   {
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_isAuto = false;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_AutoTask_done =false;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu = true;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_ManuTask_done =false;
+    pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
+    pobj_mdpar->hold_reg.Reg.type_manu_disp = 6;
+    LOG_INFO("start manu mode ,action index is handl");
+   }
+
+   if(pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu == true && pobj_mdpar->hold_reg.Reg.type_manu_disp ==6)
+    {
+      action_info_ par;
+      par.index = 0;
+      par.type = 52; //右臂
+     
+      par.sub_index = 0;
+      par.info_.action_data.d[0] = pobj_mdpar->getfloat_par.par.aim_rotate;
+      
+
+      if(mode_manu_arm_rotate_head_hand(par) == true)
+      {
+        pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu = false;
+        pobj_mdpar->hold_BtnReg1_cur.bfalg_ManuTask_done =true;
+        pobj_mdpar->hold_reg.Reg.type_manu_disp =0;
+         pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
+        LOG_INFO("manu handl action mode done ");
+      }
+    }
+
+                //头运动
+    if( pobj_mdpar->hold_BtnReg0_curr.btn_head_2run == true && pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu==false &&
+   pobj_mdpar->hold_BtnReg0_last.btn_head_2run == false) //手动进行右臂操作
+   {
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_isAuto = false;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_AutoTask_done =false;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu = true;
+    pobj_mdpar->hold_BtnReg1_cur.bfalg_ManuTask_done =false;
+    pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
+    pobj_mdpar->hold_reg.Reg.type_manu_disp = 7;
+    LOG_INFO("start manu mode ,action index is handl");
+   }
+
+   if(pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu == true && pobj_mdpar->hold_reg.Reg.type_manu_disp ==7)
+    {
+      action_info_ par;
+      par.index = 0;
+      par.type = 53; //右臂
+     
+      par.sub_index = 0;
+      par.info_.action_data.d[0] = pobj_mdpar->getfloat_par.par.aim_head;
+      
+
+      if(mode_manu_arm_rotate_head_hand(par) == true)
+      {
+        pobj_mdpar->hold_BtnReg1_cur.bfalg_isManu = false;
+        pobj_mdpar->hold_BtnReg1_cur.bfalg_ManuTask_done =true;
+        pobj_mdpar->hold_reg.Reg.type_manu_disp =0;
+         pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
+        LOG_INFO("manu handl action mode done ");
+      }
+    }
+}
+
+/// @brief 手动提升
+/// @return 速度由xml配置文件中获取，目标位置由modbus寄存器获取
+bool RobotCtrol::mode_manu_lift()
+{
+  if(pobj_mdpar->hold_reg.Reg.sta_manu_disp ==0) //发送指令
+      {
+          service_srv_servo_cmd_.cmd_request_.seq+=1;
+          srv_servo_cmd_request_ reque;
+          action_info_ template_action;//使能
+          template_action.index = 0;
+          template_action.type = 62;
+          template_action.sub_index = 0;
+
+          if(param_robot.para_axis_lift.speed_convert_factor == 0)
+          {
+            LOG_WARN("speed_convert_factor is 0");
+            return false;
+          }
+
+          if(param_robot.para_axis_lift.time_acc_s == 0)
+          {
+            LOG_WARN("time_acc_s is 0");
+            return false;
+          }
+
+          template_action.info_.action_data.d[0] = pobj_mdpar->getfloat_par.par.aim_lift / param_robot.para_axis_lift.speed_convert_factor; //转换为多少转
+          template_action.info_.action_data.d[1] = param_robot.para_axis_lift.veljog_mpm / param_robot.para_axis_lift.speed_convert_factor;
+          template_action.info_.action_data.d[2] = template_action.info_.action_data.d[1] / param_robot.para_axis_lift.time_acc_s / 60;
+
+          transform::getliftMotionCmd(template_action, service_srv_servo_cmd_.cmd_request_.seq,service_srv_servo_cmd_.cmd_request_);
+          // 使用 send_command_from_config 
+          service_srv_servo_cmd_.send_command_from_config(2);
+
+          if(service_srv_servo_cmd_.last_result_.call_success == true )
+          {
+              pobj_mdpar->hold_reg.Reg.sta_manu_disp =10;
+              LOG_INFO("lift servo running in manu mode,aim pos is %.2f ,vel is %.2f", template_action.info_.Axis_servo_pose.dis, template_action.info_.Axis_servo_pose.vel);
+          }
+      }
+      else if(pobj_mdpar->hold_reg.Reg.sta_manu_disp ==10) //等待返回
+      {
+        if(topic_lift_module_.InfoJoint_lift.req == service_srv_servo_cmd_.cmd_request_.seq &&
+          topic_lift_module_.InfoJoint_lift.bdone ==  true && topic_lift_module_.InfoJoint_lift.error ==0)
+          {
+            pobj_mdpar->hold_reg.Reg.sta_manu_disp =20;
+            
+            
+            LOG_INFO("lift servo running done");
+            return true;
+           
+
+          } 
+
+      }
+    return false;
+}
+/// @brief 
+/// @param type 22 左臂 ；23 右臂； 42 左手；43 右手； 52：rotate 53：head
+
+bool RobotCtrol::mode_manu_arm_rotate_head_hand(const action_info_ &par)
+{
+     if(pobj_mdpar->hold_reg.Reg.sta_manu_disp ==0) //发送指令
+      {
+          transform::getArmMotionCmd(par, service_execdmd_arms_.cmd_config_);
+          service_execdmd_arms_.send_command_from_config();         
+          pobj_mdpar->hold_reg.Reg.sta_manu_disp =5;
+          std::unique_lock<std::mutex> lock1( service_execdmd_arms_.mutex_ );
+          service_execdmd_arms_.last_result_.success =false ;
+          service_execdmd_arms_.last_call_success_= false;
+
+      }
+      else if(pobj_mdpar->hold_reg.Reg.sta_manu_disp ==5) //waiting for callback
+      {
+        std::unique_lock<std::mutex> lock1( service_execdmd_arms_.mutex_ );
+        if(service_execdmd_arms_.last_result_.success == true && service_execdmd_arms_.last_result_.result_group ==service_execdmd_arms_.cmd_config_.group)
+          {
+            pobj_mdpar->hold_reg.Reg.sta_manu_disp =10;
+            LOG_INFO("sta_manu state is %d ",pobj_mdpar->hold_reg.Reg.sta_manu_disp);
+          }
+        
+
+      }
+      else if(pobj_mdpar->hold_reg.Reg.sta_manu_disp ==10) //等待返回
+      {
+        LOG_INFO("InfoArmMotionResult.command_id is %d ",topic_arm_motion_result_module_.InfoArmMotionResult.command_id);
+        LOG_INFO("service_execdmd_arms_.last_result_.command_id is %d ",service_execdmd_arms_.last_result_.command_id);
+        if(topic_arm_motion_result_module_.InfoArmMotionResult.command_id == service_execdmd_arms_.last_result_.command_id
+        && topic_arm_motion_result_module_.InfoArmMotionResult.executed ==true && service_execdmd_arms_.last_result_.result_group ==topic_arm_motion_result_module_.InfoArmMotionResult.group)
+           
+          {
+            pobj_mdpar->hold_reg.Reg.sta_manu_disp =15;
+            LOG_INFO("sta_manu_disp2 state is %d ",pobj_mdpar->hold_reg.Reg.sta_manu_disp);
+            return true;
+          } 
+
+      }
+      return false;
+}
+void RobotCtrol::monitor()
+{
+  //心跳设置
+   if(pobj_mdpar->hold_reg.Reg.system_heartbeat_cnt++ >10000)
+   {
+     pobj_mdpar->hold_reg.Reg.system_heartbeat_cnt = 0;
+   }
+
+   //
+}
 void RobotCtrol::updata_pos_mutex()
 {
   //获取手臂位置
   std::unique_lock<std::mutex> lock(topic_arm_module_.mutex_, std::defer_lock);
   if(lock.try_lock()) //获取到进行数据更新
   {
-        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armL.x,pobj_mdpar->show_reg.Reg.pos_arml_x_f2w_1, pobj_mdpar->show_reg.Reg.pos_arml_x_f2w_2 );
-        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armL.y,pobj_mdpar->show_reg.Reg.pos_arml_y_f2w_1, pobj_mdpar->show_reg.Reg.pos_arml_y_f2w_2 );
-        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armL.z,pobj_mdpar->show_reg.Reg.pos_arml_z_f2w_1, pobj_mdpar->show_reg.Reg.pos_arml_z_f2w_2 );
-        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armL.rx,pobj_mdpar->show_reg.Reg.pos_arml_rx_f2w_1, pobj_mdpar->show_reg.Reg.pos_arml_rx_f2w_2 );
-        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armL.ry,pobj_mdpar->show_reg.Reg.pos_arml_ry_f2w_1, pobj_mdpar->show_reg.Reg.pos_arml_ry_f2w_2 );
-        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armL.rz,pobj_mdpar->show_reg.Reg.pos_arml_rz_f2w_1, pobj_mdpar->show_reg.Reg.pos_arml_rz_f2w_2 );
-
-        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armR.x,pobj_mdpar->show_reg.Reg.pos_armr_x_f2w_1, pobj_mdpar->show_reg.Reg.pos_armr_x_f2w_2 );
-        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armR.y,pobj_mdpar->show_reg.Reg.pos_armr_y_f2w_1, pobj_mdpar->show_reg.Reg.pos_armr_y_f2w_2 );
-        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armR.z,pobj_mdpar->show_reg.Reg.pos_armr_z_f2w_1, pobj_mdpar->show_reg.Reg.pos_armr_z_f2w_2 );
-        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armR.rx,pobj_mdpar->show_reg.Reg.pos_armr_rx_f2w_1, pobj_mdpar->show_reg.Reg.pos_armr_rx_f2w_2 );
-        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armR.ry,pobj_mdpar->show_reg.Reg.pos_armr_ry_f2w_1, pobj_mdpar->show_reg.Reg.pos_armr_ry_f2w_2 );
-        pobj_mdpar->write_float_to_word(pobj_mdpar->out_armR.rz,pobj_mdpar->show_reg.Reg.pos_armr_rz_f2w_1, pobj_mdpar->show_reg.Reg.pos_armr_rz_f2w_2 );
+      //  pobj_mdpar->write_float_to_word(pobj_mdpar->out_armL.x,pobj_mdpar->hold_reg.Reg., pobj_mdpar->hold_reg.Reg.pos_arml_x_f2w_2 );
+       
 
     lock.unlock();//解锁
   }
 
-  //获取手臂位置
-  std::unique_lock<std::mutex> lock1(topic_lift_module_.mutex_, std::defer_lock);
+  //获取提升电机位置
+  std::unique_lock<std::mutex> lock_1(topic_lift_module_.mutex_, std::defer_lock);
+  if(lock_1.try_lock()) //获取到进行数据更新
+  {
+    float value = topic_lift_module_.InfoJoint_lift.rad_pose_current/CODEAXIS_RATIO_RPM_LIFTSERVO*param_robot.para_axis_lift.speed_convert_factor;
+    pobj_mdpar->write_float_to_word(topic_lift_module_.InfoJoint_lift.rad_pose_current,pobj_mdpar->hold_reg.Reg.currpos_lift_1_1,pobj_mdpar->hold_reg.Reg.currpos_lift_1_2);
+    lock_1.unlock();//解锁
+  }
+
+    //获取左臂坐标
+  std::unique_lock<std::mutex> lock1(topic_eefpos_handleft_module_.mutex_, std::defer_lock);
   if(lock1.try_lock()) //获取到进行数据更新
   {
-    pobj_mdpar->write_float_to_word(topic_lift_module_.InfoJoint_lift.rad_pose_current,pobj_mdpar->show_reg.Reg.pos_servo_lift_f2w_1,pobj_mdpar->show_reg.Reg.pos_servo_lift_f2w_2);
+    pobj_mdpar->write_float_to_word(topic_eefpos_handleft_module_.InfoEefpos_handleft.x, pobj_mdpar->hold_reg.Reg.currpos_arml_x_1,pobj_mdpar->hold_reg.Reg.currpos_arml_x_2);
+    pobj_mdpar->write_float_to_word(topic_eefpos_handleft_module_.InfoEefpos_handleft.y, pobj_mdpar->hold_reg.Reg.currpos_arml_y_1,pobj_mdpar->hold_reg.Reg.currpos_arml_y_2);
+    pobj_mdpar->write_float_to_word(topic_eefpos_handleft_module_.InfoEefpos_handleft.z, pobj_mdpar->hold_reg.Reg.currpos_arml_z_1,pobj_mdpar->hold_reg.Reg.currpos_arml_z_2);
+    pobj_mdpar->write_float_to_word(topic_eefpos_handleft_module_.InfoEefpos_handleft.roll, pobj_mdpar->hold_reg.Reg.currpos_arml_rx_1,pobj_mdpar->hold_reg.Reg.currpos_arml_rx_2);
+    pobj_mdpar->write_float_to_word(topic_eefpos_handleft_module_.InfoEefpos_handleft.pitch, pobj_mdpar->hold_reg.Reg.currpos_arml_ry_1,pobj_mdpar->hold_reg.Reg.currpos_arml_ry_2);
+    pobj_mdpar->write_float_to_word(topic_eefpos_handleft_module_.InfoEefpos_handleft.yaw, pobj_mdpar->hold_reg.Reg.currpos_arml_rz_1,pobj_mdpar->hold_reg.Reg.currpos_arml_rz_2);
+
     lock1.unlock();//解锁
   }
 
+      //获取右臂坐标
+  std::unique_lock<std::mutex> lock2(topic_eefpos_handright_module_.mutex_, std::defer_lock);
+  if(lock2.try_lock()) //获取到进行数据更新
+  {
+    pobj_mdpar->write_float_to_word(topic_eefpos_handright_module_.InfoEefpos_handright.x, pobj_mdpar->hold_reg.Reg.currpos_armr_x_1,pobj_mdpar->hold_reg.Reg.currpos_armr_x_2);
+    pobj_mdpar->write_float_to_word(topic_eefpos_handright_module_.InfoEefpos_handright.y, pobj_mdpar->hold_reg.Reg.currpos_armr_y_1,pobj_mdpar->hold_reg.Reg.currpos_armr_y_2);
+    pobj_mdpar->write_float_to_word(topic_eefpos_handright_module_.InfoEefpos_handright.z, pobj_mdpar->hold_reg.Reg.currpos_armr_z_1,pobj_mdpar->hold_reg.Reg.currpos_armr_z_2);
+    pobj_mdpar->write_float_to_word(topic_eefpos_handright_module_.InfoEefpos_handright.roll, pobj_mdpar->hold_reg.Reg.currpos_armr_rx_1,pobj_mdpar->hold_reg.Reg.currpos_armr_rx_2);
+    pobj_mdpar->write_float_to_word(topic_eefpos_handright_module_.InfoEefpos_handright.pitch, pobj_mdpar->hold_reg.Reg.currpos_armr_ry_1,pobj_mdpar->hold_reg.Reg.currpos_armr_ry_2);
+    pobj_mdpar->write_float_to_word(topic_eefpos_handright_module_.InfoEefpos_handright.yaw, pobj_mdpar->hold_reg.Reg.currpos_armr_rz_1,pobj_mdpar->hold_reg.Reg.currpos_armr_rz_2);
+
+    lock2.unlock();//解锁
+  }
 
 
 }
@@ -610,11 +1107,11 @@ bool RobotCtrol::decode_action(array_actions_info_ &par)
 {
   //当运动自状态机大于运动条数+5，以5为步长进行设置状态机
   
-  if(pobj_mdpar->show_reg.Reg.sta_sub_action >= (par.actions.size()*10))
+  if(pobj_mdpar->hold_reg.Reg.sta_sub_action >= (par.actions.size()*10))
   {
     return true;
   }
-   auto index = pobj_mdpar->show_reg.Reg.sta_sub_action /10;
+   auto index = pobj_mdpar->hold_reg.Reg.sta_sub_action /10;
    auto type = par.actions.at(index).type; //获取类型
 
    LOG_INFO("index is %d type is %d date is %f", index,type,par.actions.at(index).info_.action_data.d[0]);
@@ -625,34 +1122,34 @@ bool RobotCtrol::decode_action(array_actions_info_ &par)
    }
    else if(type < 60) //双臂控制
    {
-      if(pobj_mdpar->show_reg.Reg.sta_sub_action %10 ==0) //发送指令
+      if(pobj_mdpar->hold_reg.Reg.sta_sub_action %10 ==0) //发送指令
       {
           transform::getArmMotionCmd(par.actions.at(index), service_execdmd_arms_.cmd_config_);
           service_execdmd_arms_.send_command_from_config();         
-          pobj_mdpar->show_reg.Reg.sta_sub_action +=2;
+          pobj_mdpar->hold_reg.Reg.sta_sub_action +=2;
           std::unique_lock<std::mutex> lock1( service_execdmd_arms_.mutex_ );
           service_execdmd_arms_.last_result_.success =false ;
           service_execdmd_arms_.last_call_success_= false;
 
       }
-      else if(pobj_mdpar->show_reg.Reg.sta_sub_action %10 ==2) //waiting for callback
+      else if(pobj_mdpar->hold_reg.Reg.sta_sub_action %10 ==2) //waiting for callback
       {
         std::unique_lock<std::mutex> lock1( service_execdmd_arms_.mutex_ );
         if(service_execdmd_arms_.last_result_.success == true && service_execdmd_arms_.last_result_.result_group ==service_execdmd_arms_.cmd_config_.group)
           {
-            pobj_mdpar->show_reg.Reg.sta_sub_action +=3;
-            LOG_INFO("sta_sub_action1 state is %d ",pobj_mdpar->show_reg.Reg.sta_sub_action && service_execdmd_arms_.last_result_.result_group ==service_execdmd_arms_.cmd_config_.group);
+            pobj_mdpar->hold_reg.Reg.sta_sub_action +=3;
+            LOG_INFO("sta_sub_action1 state is %d ",pobj_mdpar->hold_reg.Reg.sta_sub_action && service_execdmd_arms_.last_result_.result_group ==service_execdmd_arms_.cmd_config_.group);
           }
         else if(service_execdmd_arms_.last_call_success_== true )
         {
           //没有接收成功，需要重新发送
-          pobj_mdpar->show_reg.Reg.sta_sub_action =(pobj_mdpar->show_reg.Reg.sta_sub_action /10)*10;
-            LOG_INFO("retry cmd arm %d ",pobj_mdpar->show_reg.Reg.sta_sub_action);
+          pobj_mdpar->hold_reg.Reg.sta_sub_action =(pobj_mdpar->hold_reg.Reg.sta_sub_action /10)*10;
+            LOG_INFO("retry cmd arm %d ",pobj_mdpar->hold_reg.Reg.sta_sub_action);
 
         }
 
       }
-      else if(pobj_mdpar->show_reg.Reg.sta_sub_action %10 ==5) //等待返回
+      else if(pobj_mdpar->hold_reg.Reg.sta_sub_action %10 ==5) //等待返回
       {
         LOG_INFO("InfoArmMotionResult.command_id is %d ",topic_arm_motion_result_module_.InfoArmMotionResult.command_id);
         LOG_INFO("service_execdmd_arms_.last_result_.command_id is %d ",service_execdmd_arms_.last_result_.command_id);
@@ -660,15 +1157,15 @@ bool RobotCtrol::decode_action(array_actions_info_ &par)
         && topic_arm_motion_result_module_.InfoArmMotionResult.executed ==true && service_execdmd_arms_.last_result_.result_group ==topic_arm_motion_result_module_.InfoArmMotionResult.group)
            
           {
-            pobj_mdpar->show_reg.Reg.sta_sub_action +=5;
-            LOG_INFO("sta_sub_action2 state is %d ",pobj_mdpar->show_reg.Reg.sta_sub_action);
+            pobj_mdpar->hold_reg.Reg.sta_sub_action +=5;
+            LOG_INFO("sta_sub_action2 state is %d ",pobj_mdpar->hold_reg.Reg.sta_sub_action);
           } 
 
       }
    }
    else if(type < 70) //提升电机
    {
-      if(pobj_mdpar->show_reg.Reg.sta_sub_action %10 ==0) //发送指令
+      if(pobj_mdpar->hold_reg.Reg.sta_sub_action %10 ==0) //发送指令
       {
           service_srv_servo_cmd_.cmd_request_.seq+=1;
           srv_servo_cmd_request_ reque;
@@ -678,17 +1175,17 @@ bool RobotCtrol::decode_action(array_actions_info_ &par)
 
           if(service_srv_servo_cmd_.last_result_.call_success == true )
           {
-              pobj_mdpar->show_reg.Reg.sta_sub_action +=5;
-              LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
+              pobj_mdpar->hold_reg.Reg.sta_sub_action +=5;
+              LOG_INFO("system state is %d ",pobj_mdpar->hold_reg.Reg.sta_system);
           }
       }
-      else if(pobj_mdpar->show_reg.Reg.sta_sub_action %10 ==5) //等待返回
+      else if(pobj_mdpar->hold_reg.Reg.sta_sub_action %10 ==5) //等待返回
       {
         if(topic_lift_module_.InfoJoint_lift.req == service_srv_servo_cmd_.cmd_request_.seq &&
           topic_lift_module_.InfoJoint_lift.bdone ==  true && topic_lift_module_.InfoJoint_lift.error ==0)
           {
-            pobj_mdpar->show_reg.Reg.sta_sub_action +=5;
-            LOG_INFO("system state is %d ",pobj_mdpar->show_reg.Reg.sta_system);
+            pobj_mdpar->hold_reg.Reg.sta_sub_action +=5;
+            LOG_INFO("system state is %d ",pobj_mdpar->hold_reg.Reg.sta_system);
           } 
 
       }
@@ -700,6 +1197,86 @@ bool RobotCtrol::decode_action(array_actions_info_ &par)
 
 }
 
+
+// ======================== 左手末端位姿话题订阅模块 ========================
+void TopicEefpos_handleft::init(rclcpp::Node * node)
+{
+  node_ = node;
+  eef_pose_sub_ = node_->create_subscription<robot_controller::msg::EndEffectorPose>(
+    "/eef_pose_publisher/left_hand",
+    10,
+    std::bind(&TopicEefpos_handleft::eef_pose_callback, this, std::placeholders::_1));
+  LOG_INFO("已订阅 /eef_pose_publisher/left_hand");
+}
+
+void TopicEefpos_handleft::eef_pose_callback(const robot_controller::msg::EndEffectorPose::SharedPtr msg)
+{
+  std::unique_lock<std::mutex> lock1(mutex_, std::defer_lock);
+  if(lock1.try_lock())
+  {
+    InfoEefpos_handleft.arm = msg->arm;
+    InfoEefpos_handleft.base_frame = msg->base_frame;
+    InfoEefpos_handleft.ee_frame = msg->ee_frame;
+    InfoEefpos_handleft.x = msg->x;
+    InfoEefpos_handleft.y = msg->y;
+    InfoEefpos_handleft.z = msg->z;
+    InfoEefpos_handleft.roll = msg->roll;
+    InfoEefpos_handleft.pitch = msg->pitch;
+    InfoEefpos_handleft.yaw = msg->yaw;
+    InfoEefpos_handleft.tf_data_age_sec = msg->tf_data_age_sec;
+    InfoEefpos_handleft.valid = msg->valid;
+    InfoEefpos_handleft.status = msg->status;
+    InfoEefpos_handleft.stamp_sec = msg->header.stamp.sec;
+    InfoEefpos_handleft.stamp_nanosec = msg->header.stamp.nanosec;
+
+    LOG_INFO("[InfoEefpos_handleft] arm=%s, x=%.4f, y=%.4f, z=%.4f, roll=%.4f, pitch=%.4f, yaw=%.4f, valid=%d",
+      InfoEefpos_handleft.arm.c_str(),
+      InfoEefpos_handleft.x, InfoEefpos_handleft.y, InfoEefpos_handleft.z,
+      InfoEefpos_handleft.roll, InfoEefpos_handleft.pitch, InfoEefpos_handleft.yaw,
+      InfoEefpos_handleft.valid);
+    lock1.unlock();
+  }
+}
+
+// ======================== 右手末端位姿话题订阅模块 ========================
+void TopicEefpos_handright::init(rclcpp::Node * node)
+{
+  node_ = node;
+  eef_pose_sub_ = node_->create_subscription<robot_controller::msg::EndEffectorPose>(
+    "/eef_pose_publisher/right_hand",
+    10,
+    std::bind(&TopicEefpos_handright::eef_pose_callback, this, std::placeholders::_1));
+  LOG_INFO("已订阅 /eef_pose_publisher/right_hand");
+}
+
+void TopicEefpos_handright::eef_pose_callback(const robot_controller::msg::EndEffectorPose::SharedPtr msg)
+{
+  std::unique_lock<std::mutex> lock1(mutex_, std::defer_lock);
+  if(lock1.try_lock())
+  {
+    InfoEefpos_handright.arm = msg->arm;
+    InfoEefpos_handright.base_frame = msg->base_frame;
+    InfoEefpos_handright.ee_frame = msg->ee_frame;
+    InfoEefpos_handright.x = msg->x;
+    InfoEefpos_handright.y = msg->y;
+    InfoEefpos_handright.z = msg->z;
+    InfoEefpos_handright.roll = msg->roll;
+    InfoEefpos_handright.pitch = msg->pitch;
+    InfoEefpos_handright.yaw = msg->yaw;
+    InfoEefpos_handright.tf_data_age_sec = msg->tf_data_age_sec;
+    InfoEefpos_handright.valid = msg->valid;
+    InfoEefpos_handright.status = msg->status;
+    InfoEefpos_handright.stamp_sec = msg->header.stamp.sec;
+    InfoEefpos_handright.stamp_nanosec = msg->header.stamp.nanosec;
+
+    LOG_INFO("[InfoEefpos_handright] arm=%s, x=%.4f, y=%.4f, z=%.4f, roll=%.4f, pitch=%.4f, yaw=%.4f, valid=%d",
+      InfoEefpos_handright.arm.c_str(),
+      InfoEefpos_handright.x, InfoEefpos_handright.y, InfoEefpos_handright.z,
+      InfoEefpos_handright.roll, InfoEefpos_handright.pitch, InfoEefpos_handright.yaw,
+      InfoEefpos_handright.valid);
+    lock1.unlock();
+  }
+}
 
 void RobotCtrol::run()
 {

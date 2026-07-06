@@ -22,10 +22,12 @@ using namespace std;
 
 namespace robot_ctrol_node
 {
+
+  
 // 全局配置 & Modbus 资源
 constexpr int MODBUS_TCP_PORT     = 5020;
 constexpr int MAX_CLIENT_NUM      = 5;
-constexpr int REGISTER_COUNT      = 20;
+constexpr int REGISTER_COUNT      = 300;
 constexpr int POLL_INTERVAL_MS    = 50;
 constexpr int RECONNECT_DELAY_MS  = 1000;
 
@@ -42,8 +44,8 @@ class ModbusTcpServerCpp
         void start();//运行
         void stop();//停止
         modbus_mapping_t* g_modbus_map = nullptr;
-        void update_Input_reg(uint8_t index_start ,uint16_t* src, uint8_t len); //更新寄存器数据
-        void getdown_Input_reg(uint8_t index_start , uint16_t* des, uint8_t len); //获取寄存器数据
+        void update_Input_reg(uint8_t index_start ,uint16_t* src, uint16_t len); //更新寄存器数据
+        void getdown_Input_reg(uint8_t index_start , uint16_t* des, uint16_t len); //获取寄存器数据
 
 
 

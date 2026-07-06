@@ -71,7 +71,7 @@ namespace robot_ctrol_node
   /// @brief 对只读寄存器进行数据更新
   /// @param index_start 
   /// @param src 
-  void ModbusTcpServerCpp::update_Input_reg(uint8_t index_start ,uint16_t* src, uint8_t len)
+  void ModbusTcpServerCpp::update_Input_reg(uint8_t index_start ,uint16_t* src, uint16_t len)
   {
     std::lock_guard<std::mutex> lock(g_reg_mutex);
     memcpy(g_modbus_map->tab_registers+index_start,src,len);
@@ -80,7 +80,7 @@ namespace robot_ctrol_node
   /// @brief 获取寄存器数据
   /// @param index_start 
   /// @param src 
-  void ModbusTcpServerCpp::getdown_Input_reg(uint8_t index_start , uint16_t* des, uint8_t len)
+  void ModbusTcpServerCpp::getdown_Input_reg(uint8_t index_start , uint16_t* des, uint16_t len)
   {
       std::lock_guard<std::mutex> lock(g_reg_mutex);
       memcpy(des,g_modbus_map->tab_registers+index_start,len);

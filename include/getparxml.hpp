@@ -9,6 +9,8 @@
 #include "datedef.hpp"
 #include "config_par.hpp"
 
+#define MAX_ACTIONS 40
+
 namespace robot_ctrol_node
 {
     class getparxml
@@ -23,8 +25,8 @@ namespace robot_ctrol_node
 
             };
                     //获取动作
-            array_actions_info_ actions_init;
-            array_actions_info_ actions_scan;
+            array_actions_info_ actions[MAX_ACTIONS]; //0:初始化动作 1:扫描动作
+            
 
             //获取参数
             dev_params_info_ para_axis_lift;
@@ -58,7 +60,21 @@ namespace robot_ctrol_node
                             // it->second 就是 "mode" 对应的 value
                             para_axis_lift.speed_convert_factor = std::stof(it->second);
                         } 
-                        LOG_INFO(" lift_motor mode is %s , factor is %.2f",para_axis_lift.mode.c_str(),para_axis_lift.speed_convert_factor);
+
+                        it = tmap.find("veljog_mpm");
+                        if (it != tmap.end()) {
+                            // it->second 就是 "mode" 对应的 value
+                            para_axis_lift.veljog_mpm = std::stof(it->second);
+                        } 
+                        
+                        it = tmap.find("time_acc_s");
+                        if (it != tmap.end()) {
+                            // it->second 就是 "mode" 对应的 value
+                            para_axis_lift.time_acc_s = std::stof(it->second);
+                        } 
+
+
+                        LOG_INFO(" lift_motor mode is %s , factor is %.8f, veljog_mpm is %.2f",para_axis_lift.mode.c_str(),para_axis_lift.speed_convert_factor,para_axis_lift.veljog_mpm);
                     }
 
                     if (par.device_name =="dual_arm" ) //提升电机参数
@@ -120,30 +136,30 @@ namespace robot_ctrol_node
                     {
                         auto it2 = it->second;
                         // 关键：提前扩容，和源 vector 大小保持一致
-                        actions_init.actions.resize(it2.size());
+                        actions[0].actions.resize(it2.size());
                         for (size_t idx = 0; idx < it2.size(); ++idx)
                         {
-                        actions_init.actions.at(idx).index = it2.at(idx).index;
-                        actions_init.actions.at(idx).sub_index =  it2.at(idx).sub_index;
-                        actions_init.actions.at(idx).type = it2.at(idx).type;
-                        actions_init.actions.at(idx).info_.action_data.d[0] = it2.at(idx).d1;
-                        actions_init.actions.at(idx).info_.action_data.d[1] = it2.at(idx).d2;
-                        actions_init.actions.at(idx).info_.action_data.d[2] = it2.at(idx).d3;
-                        actions_init.actions.at(idx).info_.action_data.d[3] = it2.at(idx).d4;
-                        actions_init.actions.at(idx).info_.action_data.d[4] = it2.at(idx).d5;
-                        actions_init.actions.at(idx).info_.action_data.d[5] = it2.at(idx).d6;
-                        actions_init.actions.at(idx).info_.action_data.d[6] = it2.at(idx).d7;
-                        actions_init.actions.at(idx).info_.action_data.d[7] = it2.at(idx).d8;
-                        actions_init.actions.at(idx).info_.action_data.d[8] = it2.at(idx).d9;
-                        actions_init.actions.at(idx).info_.action_data.d[9] = it2.at(idx).d10;
-                        actions_init.actions.at(idx).info_.action_data.d[10] = it2.at(idx).d11;
-                        actions_init.actions.at(idx).info_.action_data.d[11] = it2.at(idx).d12;
-                        actions_init.actions.at(idx).info_.action_data.d[12] = it2.at(idx).d13;
-                        actions_init.actions.at(idx).info_.action_data.d[13] = it2.at(idx).d14;
+                        actions[0].actions.at(idx).index = it2.at(idx).index;
+                        actions[0].actions.at(idx).sub_index =  it2.at(idx).sub_index;
+                        actions[0].actions.at(idx).type = it2.at(idx).type;
+                        actions[0].actions.at(idx).info_.action_data.d[0] = it2.at(idx).d1;
+                        actions[0].actions.at(idx).info_.action_data.d[1] = it2.at(idx).d2;
+                        actions[0].actions.at(idx).info_.action_data.d[2] = it2.at(idx).d3;
+                        actions[0].actions.at(idx).info_.action_data.d[3] = it2.at(idx).d4;
+                        actions[0].actions.at(idx).info_.action_data.d[4] = it2.at(idx).d5;
+                        actions[0].actions.at(idx).info_.action_data.d[5] = it2.at(idx).d6;
+                        actions[0].actions.at(idx).info_.action_data.d[6] = it2.at(idx).d7;
+                        actions[0].actions.at(idx).info_.action_data.d[7] = it2.at(idx).d8;
+                        actions[0].actions.at(idx).info_.action_data.d[8] = it2.at(idx).d9;
+                        actions[0].actions.at(idx).info_.action_data.d[9] = it2.at(idx).d10;
+                        actions[0].actions.at(idx).info_.action_data.d[10] = it2.at(idx).d11;
+                        actions[0].actions.at(idx).info_.action_data.d[11] = it2.at(idx).d12;
+                        actions[0].actions.at(idx).info_.action_data.d[12] = it2.at(idx).d13;
+                        actions[0].actions.at(idx).info_.action_data.d[13] = it2.at(idx).d14;
 
                         
                         LOG_INFO("  [%zu] index: %u, sub_index: %u, type: %u",
-                                idx, actions_init.actions.at(idx).index, actions_init.actions.at(idx).sub_index, actions_init.actions.at(idx).type);
+                                idx, actions[0].actions.at(idx).index, actions[0].actions.at(idx).sub_index, actions[0].actions.at(idx).type);
                      
                         }
                     }
@@ -155,30 +171,30 @@ namespace robot_ctrol_node
                     {
                         auto it2 = it->second;
                         // 关键：提前扩容，和源 vector 大小保持一致
-                        actions_scan.actions.resize(it2.size());
+                        actions[1].actions.resize(it2.size());
                         for (size_t idx = 0; idx < it2.size(); ++idx)
                         {
-                        actions_scan.actions.at(idx).index = it2.at(idx).index;
-                        actions_scan.actions.at(idx).sub_index =  it2.at(idx).sub_index;
-                        actions_scan.actions.at(idx).type = it2.at(idx).type;
-                        actions_scan.actions.at(idx).info_.action_data.d[0] = it2.at(idx).d1;
-                        actions_scan.actions.at(idx).info_.action_data.d[1] = it2.at(idx).d2;
-                        actions_scan.actions.at(idx).info_.action_data.d[2] = it2.at(idx).d3;
-                        actions_scan.actions.at(idx).info_.action_data.d[3] = it2.at(idx).d4;
-                        actions_scan.actions.at(idx).info_.action_data.d[4] = it2.at(idx).d5;
-                        actions_scan.actions.at(idx).info_.action_data.d[5] = it2.at(idx).d6;
-                        actions_scan.actions.at(idx).info_.action_data.d[6] = it2.at(idx).d7;
-                        actions_scan.actions.at(idx).info_.action_data.d[7] = it2.at(idx).d8;
-                        actions_scan.actions.at(idx).info_.action_data.d[8] = it2.at(idx).d9;
-                        actions_scan.actions.at(idx).info_.action_data.d[9] = it2.at(idx).d10;
-                        actions_scan.actions.at(idx).info_.action_data.d[10] = it2.at(idx).d11;
-                        actions_scan.actions.at(idx).info_.action_data.d[11] = it2.at(idx).d12;
-                        actions_scan.actions.at(idx).info_.action_data.d[12] = it2.at(idx).d13;
-                        actions_scan.actions.at(idx).info_.action_data.d[13] = it2.at(idx).d14;
+                        actions[1].actions.at(idx).index = it2.at(idx).index;
+                        actions[1].actions.at(idx).sub_index =  it2.at(idx).sub_index;
+                        actions[1].actions.at(idx).type = it2.at(idx).type;
+                        actions[1].actions.at(idx).info_.action_data.d[0] = it2.at(idx).d1;
+                        actions[1].actions.at(idx).info_.action_data.d[1] = it2.at(idx).d2;
+                        actions[1].actions.at(idx).info_.action_data.d[2] = it2.at(idx).d3;
+                        actions[1].actions.at(idx).info_.action_data.d[3] = it2.at(idx).d4;
+                        actions[1].actions.at(idx).info_.action_data.d[4] = it2.at(idx).d5;
+                        actions[1].actions.at(idx).info_.action_data.d[5] = it2.at(idx).d6;
+                        actions[1].actions.at(idx).info_.action_data.d[6] = it2.at(idx).d7;
+                        actions[1].actions.at(idx).info_.action_data.d[7] = it2.at(idx).d8;
+                        actions[1].actions.at(idx).info_.action_data.d[8] = it2.at(idx).d9;
+                        actions[1].actions.at(idx).info_.action_data.d[9] = it2.at(idx).d10;
+                        actions[1].actions.at(idx).info_.action_data.d[10] = it2.at(idx).d11;
+                        actions[1].actions.at(idx).info_.action_data.d[11] = it2.at(idx).d12;
+                        actions[1].actions.at(idx).info_.action_data.d[12] = it2.at(idx).d13;
+                        actions[1].actions.at(idx).info_.action_data.d[13] = it2.at(idx).d14;
 
                         
                         LOG_INFO("  [%zu] index: %u, sub_index: %u, type: %u",
-                                idx, actions_scan.actions.at(idx).index, actions_scan.actions.at(idx).sub_index, actions_scan.actions.at(idx).type);
+                                idx, actions[1].actions.at(idx).index, actions[1].actions.at(idx).sub_index, actions[1].actions.at(idx).type);
                        
                         }
                     }

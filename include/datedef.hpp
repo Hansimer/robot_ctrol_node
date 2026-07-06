@@ -9,8 +9,7 @@
 #define REGINDEX_SET_MODE_1 0x0001 //机械臂模式
 #define REGINDEX_SWITCH_MODE_2 0x0002 //切换模式 从00 切换到FF
 
-#define REGINDEX_INPUTREG_START 0 //显示寄存器开始索引0
-#define REGINDEX_HOLDREG_START 200
+#define REGINDEX_HOLDREG_START 0
 #define REGLEN_MAX_INPUT 200
 #define REGLEN_MAX_HOLD 200
 
@@ -206,7 +205,9 @@ namespace robot_ctrol_node
         struct dev_params_info_
         {
             std::string mode;
+            float veljog_mpm;
             float speed_convert_factor;
+            float time_acc_s;
         };
 
         struct tcp_params_info_
@@ -220,6 +221,16 @@ namespace robot_ctrol_node
         struct array_actions_info_
         {
             std::vector<action_info_> actions;
+        };
+
+
+///////////////////////////////////////////////outtime 结构体
+        struct outtime_
+        {
+            uint8_t retry_set; //重试次数
+            uint8_t retry_cnt;
+            uint16_t outtime_set;
+            uint16_t outtime_cnt;
         };
 
 ///////////////////////////////////////////////fb块相关
@@ -346,6 +357,25 @@ namespace robot_ctrol_node
             float act_pos = 0.0f;       // 实际位置
             uint8_t errid = 0;          // 错误码
             bool call_success = false;  // 调用是否成功
+        };
+
+        // ===================== 末端执行器位姿数据结构体 =====================
+        struct eef_pose_info_
+        {
+            std::string arm;              // 臂标识（如 "left", "right"）
+            std::string base_frame;       // 基坐标系
+            std::string ee_frame;         // 末端坐标系
+            float x = 0.0;              // X位置
+            float y = 0.0;              // Y位置
+            float z = 0.0;              // Z位置
+            float roll = 0.0;           // 翻滚角
+            float pitch = 0.0;          // 俯仰角
+            float yaw = 0.0;            // 偏航角
+            float tf_data_age_sec = 0.0;// TF数据延迟（秒）
+            bool valid = false;          // 数据是否有效
+            std::string status;          // 状态信息
+            int64_t stamp_sec = 0;       // 时间戳（秒）
+            int64_t stamp_nanosec = 0;   // 时间戳（纳秒）
         };
 
         // ===================== ArmMotion CommandResult 订阅结果结构体 =====================
