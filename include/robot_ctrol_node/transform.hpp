@@ -63,15 +63,15 @@ namespace robot_ctrol_node
                 }
 
                 //获取group
-                if(par.type == 12 || par.type == 22 || par.type == 32)
+                if( par.type == 22 || par.type == 32)
                 {
                     command.group = "l_arm";
                 }
-                else if(par.type == 13 || par.type == 23 || par.type == 33)
+                else if( par.type == 23 || par.type == 33)
                 {
                     command.group = "r_arm";
                 }
-                else if(par.type == 14 || par.type == 24 || par.type == 34)
+                else if(par.type == 24 || par.type == 34)
                 {
                     command.group = "dual_arms";
                 }
@@ -95,6 +95,7 @@ namespace robot_ctrol_node
                 switch(par.type )
                 {
                     case 12: //左臂joint 运动
+                        command.group = "l_arm";
                         command.goal_type = "joints";
                         command.links="left_hand";
                         command.pipeline_id = "ompl";
@@ -145,6 +146,7 @@ namespace robot_ctrol_node
                         break;
 
                     case 13: //右臂joint
+                        command.group = "r_arm";
                         command.goal_type = "joints";                        
                         command.pipeline_id = "ompl";
                         command.links="right_hand";
@@ -195,6 +197,7 @@ namespace robot_ctrol_node
                         break;
 
                     case 14:
+                        command.group = "dual_arms";
                         command.goal_type = "joints";                        
                         command.pipeline_id = "ompl";
                         command.planner_id = "RRTConnectkConfigDefault";
@@ -293,7 +296,7 @@ namespace robot_ctrol_node
                         command.planner_id = "PTP";
                         {
                             std::stringstream ss;
-                            for (size_t i = 0; i < 7; ++i)
+                            for (size_t i = 0; i < 6; ++i)
                             {
                                 if (i > 0) ss << ",";
                                 ss << par.info_.action_data.d[i] ;
@@ -310,7 +313,7 @@ namespace robot_ctrol_node
                         command.planner_id = "PTP";
                         {
                             std::stringstream ss;
-                            for (size_t i = 0; i < 7; ++i)
+                            for (size_t i = 0; i < 6; ++i)
                             {
                                 if (i > 0) ss << ",";
                                 ss << par.info_.action_data.d[i] ;
@@ -321,23 +324,23 @@ namespace robot_ctrol_node
 
                     case 24: //双臂
                         command.goal_type = "multi_pose";   
-                        command.links = "right_hand,left_hand";                       
+                        command.links = "left_hand,right_hand";                       
                         command.pipeline_id = "pilz_industrial_motion_planner";
                         command.planner_id = "PTP";
                         {
                             std::stringstream ss;
-                            for (size_t i = 0; i < 7; ++i)
+                            for (size_t i = 0; i < 6; ++i)
                             {
                                 if (i > 0) ss << ",";
                                 ss << par.info_.action_data.d[i] ;
                             }
                             ss << ";";
-                            for (size_t i = 7; i < 14; ++i)
+                            for (size_t i = 6; i < 12; ++i)
                             {
-                                if (i > 7) ss << ",";
+                                if (i > 6) ss << ",";
                                 ss << par.info_.action_data.d[i] ;
                             }
-                            command.pose = ss.str();
+                            command.poses = ss.str();
                         }
                         break;
 
@@ -350,7 +353,7 @@ namespace robot_ctrol_node
                         command.lin_position_only =1;
                         {
                             std::stringstream ss;
-                            for (size_t i = 0; i < 7; ++i)
+                            for (size_t i = 0; i < 6; ++i)
                             {
                                 if (i > 0) ss << ",";
                                 ss << par.info_.action_data.d[i] ;
@@ -367,7 +370,7 @@ namespace robot_ctrol_node
                         command.lin_position_only =1;
                         {
                             std::stringstream ss;
-                            for (size_t i = 0; i < 7; ++i)
+                            for (size_t i = 0; i < 6; ++i)
                             {
                                 if (i > 0) ss << ",";
                                 ss << par.info_.action_data.d[i] ;
@@ -376,25 +379,25 @@ namespace robot_ctrol_node
                         }
                         break;
                     case 34: //双臂
-                        command.goal_type = "pose"; 
-                        command.links = "right_hand,left_hand";                         
+                        command.goal_type = "multi_pose"; 
+                        command.links = "left_hand,right_hand";                         
                         command.pipeline_id = "pilz_industrial_motion_planner";
                         command.planner_id = "lin";
                         command.lin_position_only =1;
                         {
                             std::stringstream ss;
-                            for (size_t i = 0; i < 7; ++i)
+                            for (size_t i = 0; i < 6; ++i)
                             {
                                 if (i > 0) ss << ",";
                                 ss << par.info_.action_data.d[i] ;
                             }
                             ss << ";";
-                            for (size_t i = 7; i < 14; ++i)
+                            for (size_t i = 6; i < 12; ++i)
                             {
-                                if (i > 7) ss << ",";
+                                if (i > 6) ss << ",";
                                 ss << par.info_.action_data.d[i] ;
                             }
-                            command.pose = ss.str();
+                            command.poses = ss.str();
                         }
                         break;
                     
@@ -471,9 +474,12 @@ namespace robot_ctrol_node
             };
 
            
-            #define CODEAXIS_RATIO_RPM_LIFTSERVO 65536.0
-            #define RATIO_VEL_DEC_RPM_LIFTSERVO 512.0*CODEAXIS_RATIO_RPM_LIFTSERVO/1875
-            #define RATIO_ACC_DEC_RPS_LIFTSERVO 65536.0*CODEAXIS_RATIO_RPM_LIFTSERVO/4000000
+            #define CODEAXIS_RATIO_RPM_LIFTSERVO 1 
+            //65536.0
+            #define RATIO_VEL_DEC_RPM_LIFTSERVO 1 
+            //512.0*CODEAXIS_RATIO_RPM_LIFTSERVO/1875
+            #define RATIO_ACC_DEC_RPS_LIFTSERVO 1 
+            //65536.0*CODEAXIS_RATIO_RPM_LIFTSERVO/4000000
 
 
             #define SERVO_POWERON 1 

@@ -25,11 +25,20 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
-find_package(my_interfaces REQUIRED)
 find_package(robot_controller REQUIRED)
 find_package(ament_index_cpp REQUIRED)
-find_library(MODBUS_LIB modbus)
+find_package(my_interfaces REQUIRED)
 find_package(ethercat_control REQUIRED)
+
+# ========== 替换libmodbus查找逻辑（删除原来的find_package(libmodbus)）==========
+# 手动查找modbus头文件与库
+find_path(MODBUS_INC_DIR NAMES modbus/modbus.h)
+find_library(MODBUS_LIB NAMES modbus)
+if(NOT MODBUS_INC_DIR OR NOT MODBUS_LIB)
+  message(FATAL_ERROR "libmodbus not found, please install libmodbus-dev")
+endif()
+
+
 # 1. 指定头文件路径
 include_directories(include
                     /home/nvidia/raybot_connection_ws/install/ethercat_control/include/
@@ -64,7 +73,6 @@ target_link_libraries(robot_ctrol_node
 ${MODBUS_LIB}
 tinyxml2
 )
-
 
 ament_target_dependencies(
   robot_ctrol_node

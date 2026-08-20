@@ -108,10 +108,10 @@ void TopicHealth_arms::init(rclcpp::Node * node)
 
   // 订阅 /health/arms 话题
   health_arms_sub_ = node_->create_subscription<ethercat_control::msg::BringupHealth>(
-    "/health/arms",
+    "/raybot_robot/bringup/health",
     10,
     std::bind(&TopicHealth_arms::health_arms_callback, this, std::placeholders::_1));
-  LOG_INFO("已订阅 /health/arms");
+  LOG_INFO("/raybot_robot/bringup/health 订阅");
 }
 
 void TopicHealth_arms::health_arms_callback(const ethercat_control::msg::BringupHealth msg)
@@ -320,6 +320,7 @@ std::string ServiceExecCmd_arms::build_command(const exec_cmd_config_ & config)
     if (i > 0) result << " ";
     result << parts[i];
   }
+  LOG_INFO("build cmd is %s",result.str().c_str());
   return result.str();
 }
 
@@ -493,7 +494,7 @@ bool RobotCtrol::init()
     topic_arm_module_.init(this);
 
     // 2. 初始化升降伺服话题订阅模块
-    topic_lift_module_.init(this);
+    // topic_lift_module_.init(this);
 
     // 3. 初始化arm健康话题订阅模块
     topic_health_arms_module_.init(this);
@@ -520,7 +521,7 @@ bool RobotCtrol::init()
     service_execdmd_arms_.init(this);
 
     // 8. 初始化 SrvServoCmd 服务客户端模块
-    service_srv_servo_cmd_.init(this);
+    // service_srv_servo_cmd_.init(this);
 
 
 
@@ -555,77 +556,77 @@ void RobotCtrol::taskpool()
       {
         case 0: //初始状态
           //waiting for arm ready
-          // if(topic_health_arms_module_.InfoHealth_arms.l_arm_ready ==true 
-          // && topic_health_arms_module_.InfoHealth_arms.r_arm_ready ==true
-          // && topic_health_arms_module_.InfoHealth_arms.moveit_ready ==true
-          // && topic_health_arms_module_.InfoHealth_arms.robot_control_ready ==true
-          // )
-          // {
-              pobj_mdpar->hold_reg.Reg.sta_system = 5;
+          if(topic_health_arms_module_.InfoHealth_arms.l_arm_ready ==true 
+          && topic_health_arms_module_.InfoHealth_arms.r_arm_ready ==true
+          && topic_health_arms_module_.InfoHealth_arms.moveit_ready ==true
+          && topic_health_arms_module_.InfoHealth_arms.robot_control_ready ==true
+          )
+          {
+              pobj_mdpar->hold_reg.Reg.sta_system = 15;
               pobj_mdpar->hold_reg.Reg.sta_sub_action =0;          
               
-          // }
+          }
           break;
 
-        case 5: //等待提升电机到位
-          if(topic_lift_module_.InfoJoint_lift.name == "lift_servo")
-          {
-            pobj_mdpar->hold_reg.Reg.sta_system = 10;
-            pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
-            wcdog_liftservo_op.retry_cnt =0 ;
-            wcdog_liftservo_op.outtime_cnt =0;
+        // case 5: //等待提升电机到位
+        //   if(topic_lift_module_.InfoJoint_lift.name == "lift_servo")
+        //   {
+        //     pobj_mdpar->hold_reg.Reg.sta_system = 10;
+        //     pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
+        //     wcdog_liftservo_op.retry_cnt =0 ;
+        //     wcdog_liftservo_op.outtime_cnt =0;
 
-          }
+        //   }
 
-          break;
+        //   break;
 
-        case 10: //提升电机使能
-          if(pobj_mdpar->hold_reg.Reg.sta_manu_disp ==0) //发送指令
-          {
-              wcdog_liftservo_op.outtime_cnt =0;             
-              service_srv_servo_cmd_.cmd_request_.seq+=1;
-              srv_servo_cmd_request_ reque;
-              action_info_ template_action;//使能
-              template_action.index = 0;
-              template_action.type = 61;
-              template_action.sub_index = 0;
-              transform::getliftMotionCmd(template_action, service_srv_servo_cmd_.cmd_request_.seq,service_srv_servo_cmd_.cmd_request_);
-              // 使用 send_command_from_config 
-              service_srv_servo_cmd_.send_command_from_config(2);
+        // case 10: //提升电机使能
+        //   if(pobj_mdpar->hold_reg.Reg.sta_manu_disp ==0) //发送指令
+        //   {
+        //       wcdog_liftservo_op.outtime_cnt =0;             
+        //       service_srv_servo_cmd_.cmd_request_.seq+=1;
+        //       srv_servo_cmd_request_ reque;
+        //       action_info_ template_action;//使能
+        //       template_action.index = 0;
+        //       template_action.type = 61;
+        //       template_action.sub_index = 0;
+        //       transform::getliftMotionCmd(template_action, service_srv_servo_cmd_.cmd_request_.seq,service_srv_servo_cmd_.cmd_request_);
+        //       // 使用 send_command_from_config 
+        //       service_srv_servo_cmd_.send_command_from_config(2);
 
-              if(service_srv_servo_cmd_.last_result_.call_success == true )
-              {
-                  pobj_mdpar->hold_reg.Reg.sta_manu_disp =10;
-                  LOG_INFO("system state is %d ",pobj_mdpar->hold_reg.Reg.sta_manu_disp);
-              }
-          }
-          else if(pobj_mdpar->hold_reg.Reg.sta_manu_disp ==10) //等待返回
-          {
-            if(topic_lift_module_.InfoJoint_lift.req == service_srv_servo_cmd_.cmd_request_.seq &&
-              topic_lift_module_.InfoJoint_lift.bdone ==  true && topic_lift_module_.InfoJoint_lift.error ==0)
-              {
-                pobj_mdpar->hold_reg.Reg.sta_sub_action =20;
-                pobj_mdpar->hold_reg.Reg.sta_system = 15;
-                LOG_INFO("system state is %d ",pobj_mdpar->hold_reg.Reg.sta_manu_disp);
+        //       if(service_srv_servo_cmd_.last_result_.call_success == true )
+        //       {
+        //           pobj_mdpar->hold_reg.Reg.sta_manu_disp =10;
+        //           LOG_INFO("system state is %d ",pobj_mdpar->hold_reg.Reg.sta_manu_disp);
+        //       }
+        //   }
+        //   else if(pobj_mdpar->hold_reg.Reg.sta_manu_disp ==10) //等待返回
+        //   {
+        //     if(topic_lift_module_.InfoJoint_lift.req == service_srv_servo_cmd_.cmd_request_.seq &&
+        //       topic_lift_module_.InfoJoint_lift.bdone ==  true && topic_lift_module_.InfoJoint_lift.error ==0)
+        //       {
+        //         pobj_mdpar->hold_reg.Reg.sta_sub_action =20;
+        //         pobj_mdpar->hold_reg.Reg.sta_system = 15;
+        //         LOG_INFO("system state is %d ",pobj_mdpar->hold_reg.Reg.sta_manu_disp);
                 
 
-              } 
-            else
-            {
-              if(wcdog_liftservo_op.outtime_cnt++ > wcdog_liftservo_op.outtime_set)
-              {
-                if(wcdog_liftservo_op.retry_cnt ++ > wcdog_liftservo_op.retry_set) //等待10s 重新下发
-                {
-                  LOG_ERROR("Lift servo op failed");
-                  exit(0);//系统退出
-                }
-                pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
-              }
+        //       } 
+        //     else
+        //     {
+        //       if(wcdog_liftservo_op.outtime_cnt++ > wcdog_liftservo_op.outtime_set)
+        //       {
+        //         if(wcdog_liftservo_op.retry_cnt ++ > wcdog_liftservo_op.retry_set) //等待10s 重新下发
+        //         {
+        //           LOG_ERROR("Lift servo op failed");
+        //           exit(0);//系统退出
+        //         }
+        //         pobj_mdpar->hold_reg.Reg.sta_manu_disp = 0;
+        //       }
               
-            }
+        //     }
 
-          }
-          break;
+        //   }
+        //   break;
         case 15: //大循环
           if( pobj_mdpar->hold_reg.Reg.set_mode_run ==0) //自动模式
           {
